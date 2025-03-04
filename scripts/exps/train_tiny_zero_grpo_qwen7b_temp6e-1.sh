@@ -4,7 +4,7 @@ ray stop --force && ray start --head --include-dashboard=True
 export BASE_MODEL="Qwen/Qwen2.5-7B"
 export DATA_DIR="data/countdown"
 export ROLLOUT_TP_SIZE=4
-export EXPERIMENT_NAME=0304/countdown-qwen2.5-7b-grpo-bs128-temp1
+export EXPERIMENT_NAME=0304/countdown-qwen2.5-7b-grpo-bs128-temp6e-1
 export VLLM_ATTENTION_BACKEND=XFORMERS
 
 python3 -m verl.trainer.main_ppo \
@@ -31,6 +31,7 @@ actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
 actor_rollout_ref.rollout.name=vllm \
 actor_rollout_ref.rollout.n=8 \
 actor_rollout_ref.rollout.gpu_memory_utilization=0.15 \
+actor_rollout_ref.rollout.temperature=0.6 \
 actor_rollout_ref.ref.log_prob_micro_batch_size=4 \
 actor_rollout_ref.ref.fsdp_config.param_offload=True \
 algorithm.kl_ctrl.kl_coef=0.001 \
