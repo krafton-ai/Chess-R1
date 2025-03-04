@@ -96,18 +96,20 @@ import hydra
 
 @hydra.main(config_path='config', config_name='ppo_trainer', version_base=None)
 def main(config):
+    run_ppo(config)
+
+
+def run_ppo(config, compute_score=None):
     if not ray.is_initialized():
         # this is for local ray cluster
         ray.init(runtime_env={'env_vars': {'TOKENIZERS_PARALLELISM': 'true', 'NCCL_DEBUG': 'WARN'}})
 
-    ray.get(main_task.remote(config))
+    ray.get(main_task.remote(config, compute_score))
 
 
-@ray.remote
-def main_task(config):
-    from verl.utils.fs import copy_local_path_from_hdfs
-    from transformers import AutoTokenizer
-
+@ray.remote(num_cpus=1)  # please make sure main_task is not scheduled on head
+def main_task(config, compute_score=None):
+    from verl.utils.fs import copy_to_local
     # print initial config
     from pprint import pprint
     from omegaconf import OmegaConf
@@ -115,11 +117,12 @@ def main_task(config):
     OmegaConf.resolve(config)
 
     # download the checkpoint from hdfs
-    local_path = copy_local_path_from_hdfs(config.actor_rollout_ref.model.path)
+    local_path = copy_to_local(config.actor_rollout_ref.model.path)
 
     # instantiate tokenizer
-    from verl.utils import hf_tokenizer
+    from verl.utils import hf_tokenizer, hf_processor
     tokenizer = hf_tokenizer(local_path)
+    processor = hf_processor(local_path, use_fast=True)  # used for multimodal LLM, could be none
 
     # define worker classes
     if config.actor_rollout_ref.actor.strategy == 'fsdp':
@@ -171,15 +174,31 @@ def main_task(config):
         role_worker_mapping[Role.RewardModel] = ray.remote(RewardModelWorker)
         mapping[Role.RewardModel] = global_pool_id
 
-    reward_fn = RewardManager(tokenizer=tokenizer, num_examine=0)
+    reward_manager_name = config.reward_model.get("reward_manager", "tinyzero")
+    if reward_manager_name == 'naive':
+        from verl.workers.reward_manager import NaiveRewardManager
+        reward_manager_cls = NaiveRewardManager
+    elif reward_manager_name == 'prime':
+        from verl.workers.reward_manager import PrimeRewardManager
+        reward_manager_cls = PrimeRewardManager
+    elif reward_manager_name == 'tinyzero':
+        reward_manager_cls = RewardManager
+    else:
+        raise NotImplementedError
 
+    reward_fn = reward_manager_cls(tokenizer=tokenizer, num_examine=0)
     # Note that we always use function-based RM for validation
-    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=1)
+    val_reward_fn = reward_manager_cls(tokenizer=tokenizer, num_examine=1)
+    
+    # reward_fn = reward_manager_cls(tokenizer=tokenizer, num_examine=0, compute_score=compute_score)
+    # # Note that we always use function-based RM for validation
+    # val_reward_fn = reward_manager_cls(tokenizer=tokenizer, num_examine=1, compute_score=compute_score)
 
     resource_pool_manager = ResourcePoolManager(resource_pool_spec=resource_pool_spec, mapping=mapping)
 
     trainer = RayPPOTrainer(config=config,
                             tokenizer=tokenizer,
+                            processor=processor,
                             role_worker_mapping=role_worker_mapping,
                             resource_pool_manager=resource_pool_manager,
                             ray_worker_group_cls=ray_worker_group_cls,

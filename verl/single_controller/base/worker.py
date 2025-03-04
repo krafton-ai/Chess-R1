@@ -17,7 +17,7 @@ the class for Worker
 import os
 import socket
 from dataclasses import dataclass
-from verl.single_controller.base.decorator import register, Dispatch, Execute
+from .decorator import register, Dispatch, Execute
 
 
 @dataclass
@@ -42,10 +42,8 @@ class WorkerHelper:
             if os.getenv("WG_BACKEND", None) == "ray":
                 import ray
                 return ray._private.services.get_node_ip_address()
-            elif os.getenv("WG_BACKEND", None) == "torch_rpc":
-                from verl.single_controller.torchrpc.k8s_client import get_ip_addr
-                return get_ip_addr()
-            return None
+            else:
+                raise NotImplementedError("WG_BACKEND now just support ray mode.")
 
         host_ipv4 = os.getenv("MY_HOST_IP", None)
         host_ipv6 = os.getenv("MY_HOST_IPV6", None)
@@ -81,6 +79,7 @@ class WorkerMeta:
 
 # we assume that in each WorkerGroup, there is a Master Worker
 class Worker(WorkerHelper):
+    """A (distributed) worker."""
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
