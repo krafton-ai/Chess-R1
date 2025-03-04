@@ -361,6 +361,9 @@ def kl_penalty(logprob: torch.FloatTensor, ref_logprob: torch.FloatTensor, kl_pe
     """
     if kl_penalty == "kl":
         return logprob - ref_logprob
+    
+    if kl_penalty == "backward_kl":
+        return ref_logprob - logprob
 
     if kl_penalty == "abs":
         return (logprob - ref_logprob).abs()
@@ -371,6 +374,14 @@ def kl_penalty(logprob: torch.FloatTensor, ref_logprob: torch.FloatTensor, kl_pe
     # J. Schulman. Approximating kl divergence, 2020.
     # # URL http://joschu.net/blog/kl-approx.html.
     if kl_penalty == 'low_var_kl':
+        kl = ref_logprob - logprob
+        ratio = torch.exp(kl)
+        kld = (ratio - kl - 1).contiguous()
+        return torch.clamp(kld, min=-10, max=10)
+
+    # J. Schulman. Approximating kl divergence, 2020.
+    # # URL http://joschu.net/blog/kl-approx.html.
+    if kl_penalty == 'low_var_backward_kl':
         kl = ref_logprob - logprob
         ratio = torch.exp(kl)
         kld = (ratio - kl - 1).contiguous()

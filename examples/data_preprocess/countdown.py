@@ -68,7 +68,7 @@ Assistant: Let me solve this step by step.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--local_dir', default='~/data/countdown')
+    parser.add_argument('--local_dir', default='./data/countdown')
     parser.add_argument('--hdfs_dir', default=None)
     parser.add_argument('--num_samples', type=int, default=100000)
     parser.add_argument('--num_operands', type=int, default=6)

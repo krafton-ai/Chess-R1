@@ -22,9 +22,9 @@ from typing import List, Union, Dict, Any
 
 
 class Tracking(object):
-    supported_backend = ["wandb", "mlflow", "swanlab", "vemlp_wandb", "tensorboard", "console"]
+    supported_backend = ['wandb', 'mlflow', 'console', 'tensorboard']
 
-    def __init__(self, project_name, experiment_name, default_backend: Union[str, List[str]] = 'console', config=None):
+    def __init__(self, project_name, experiment_name, default_backend: Union[str, List[str]] = 'console', config=None, capture_console=True):
         if isinstance(default_backend, str):
             default_backend = [default_backend]
         for backend in default_backend:
@@ -51,80 +51,95 @@ class Tracking(object):
             mlflow.log_params(_compute_mlflow_params_from_objects(config))
             self.logger['mlflow'] = _MlflowLoggingAdapter()
 
-        if "swanlab" in default_backend:
-            import swanlab
-            import os
-
-            SWANLAB_API_KEY = os.environ.get("SWANLAB_API_KEY", None)
-            SWANLAB_LOG_DIR = os.environ.get("SWANLAB_LOG_DIR", "swanlog")
-            SWANLAB_MODE = os.environ.get("SWANLAB_MODE", "cloud")
-            if SWANLAB_API_KEY:
-                swanlab.login(SWANLAB_API_KEY)  # NOTE: previous login information will be overwritten
-            swanlab.init(project=project_name,
-                         experiment_name=experiment_name,
-                         config=config,
-                         logdir=SWANLAB_LOG_DIR,
-                         mode=SWANLAB_MODE)
-            self.logger["swanlab"] = swanlab
-
-        if 'vemlp_wandb' in default_backend:
-            import os
-            import volcengine_ml_platform
-            from volcengine_ml_platform import wandb as vemlp_wandb
-            volcengine_ml_platform.init(
-                ak=os.environ["VOLC_ACCESS_KEY_ID"],
-                sk=os.environ["VOLC_SECRET_ACCESS_KEY"],
-                region=os.environ["MLP_TRACKING_REGION"],
-            )
-
-            vemlp_wandb.init(
-                project=project_name,
-                name=experiment_name,
-                config=config,
-                sync_tensorboard=True,
-            )
-            self.logger['vemlp_wandb'] = vemlp_wandb
-
         if 'tensorboard' in default_backend:
-            self.logger['tensorboard'] = _TensorboardAdapter()
+            try:
+                from torch.utils.tensorboard import SummaryWriter
+                import os
+                
+                # Create log directory using project and experiment names
+                log_dir = os.path.join('runs', project_name, experiment_name)
+                os.makedirs(log_dir, exist_ok=True)
+                
+                writer = SummaryWriter(log_dir=log_dir)
+                
+                # Log config parameters if provided
+                if config:
+                    flat_config = _flatten_dict(_transform_params_to_json_serializable(config, convert_list_to_dict=True), sep='/')
+                    writer.add_text('config', str(flat_config))
+                
+                self.logger['tensorboard'] = _TensorboardLoggingAdapter(writer)
+                
+                # Setup console capture to text file if requested
+                if capture_console:
+                    self._setup_console_capture(log_dir)
+                    
+            except ImportError:
+                import warnings
+                warnings.warn("TensorBoard not found. Please install with `pip install tensorboard`.", ImportWarning)
+                # Fall back to console logging if tensorboard isn't available
+                if 'console' not in default_backend:
+                    from verl.utils.logger.aggregate_logger import LocalLogger
+                    self.console_logger = LocalLogger(print_to_console=True)
+                    self.logger['console'] = self.console_logger
+                    warnings.warn("Falling back to console logging.", ImportWarning)
 
         if 'console' in default_backend:
             from verl.utils.logger.aggregate_logger import LocalLogger
             self.console_logger = LocalLogger(print_to_console=True)
             self.logger['console'] = self.console_logger
 
+    def _setup_console_capture(self, log_dir):
+        """Set up capturing of console output to a text file"""
+        import sys
+        import os
+        
+        # Set up console log file
+        console_log_path = os.path.join(log_dir, "console_logs.txt")
+        self.console_log_file = open(console_log_path, "w")
+        
+        # Store the original stdout and stderr
+        self.original_stdout = sys.stdout
+        self.original_stderr = sys.stderr
+        
+        # Create a custom stdout/stderr capture class
+        class StdoutCapture:
+            def __init__(self, original, log_file, stream_name="stdout"):
+                self.original = original
+                self.log_file = log_file
+                self.stream_name = stream_name
+            
+            def write(self, text):
+                self.original.write(text)
+                # Write to the log file with stream identifier
+                if text:
+                    prefix = f"[{self.stream_name}] " if text.strip() else ""
+                    self.log_file.write(prefix + text)
+                    self.log_file.flush()  # Ensure it's written immediately
+            
+            def flush(self):
+                self.original.flush()
+                self.log_file.flush()
+        
+        # Replace stdout and stderr with our capturing versions
+        sys.stdout = StdoutCapture(sys.stdout, self.console_log_file, "stdout")
+        sys.stderr = StdoutCapture(sys.stderr, self.console_log_file, "stderr")
+
     def log(self, data, step, backend=None):
         for default_backend, logger_instance in self.logger.items():
             if backend is None or default_backend in backend:
                 logger_instance.log(data=data, step=step)
-
+                
     def __del__(self):
-        if 'wandb' in self.logger:
-            self.logger['wandb'].finish(exit_code=0)
-        if 'swanlab' in self.logger:
-            self.logger['swanlab'].finish()
-        if 'vemlp_wandb' in self.logger:
-            self.logger['vemlp_wandb'].finish(exit_code=0)
-        if 'tensorboard' in self.logger:
-            self.logger['tensorboard'].finish()
-
-
-class _TensorboardAdapter:
-
-    def __init__(self):
-        from torch.utils.tensorboard import SummaryWriter
-        import os
-        tensorboard_dir = os.environ.get("TENSORBOARD_DIR", "tensorboard_log")
-        os.makedirs(tensorboard_dir, exist_ok=True)
-        print(f"Saving tensorboard log to {tensorboard_dir}.")
-        self.writer = SummaryWriter(tensorboard_dir)
-
-    def log(self, data, step):
-        for key in data:
-            self.writer.add_scalar(key, data[key], step)
-
-    def finish(self):
-        self.writer.close()
+        """Clean up resources when the object is destroyed"""
+        # Restore original stdout and stderr if they were replaced
+        if hasattr(self, 'original_stdout') and hasattr(self, 'original_stderr'):
+            import sys
+            sys.stdout = self.original_stdout
+            sys.stderr = self.original_stderr
+            
+        # Close the console log file if it was opened
+        if hasattr(self, 'console_log_file'):
+            self.console_log_file.close()
 
 
 class _MlflowLoggingAdapter:
@@ -132,6 +147,22 @@ class _MlflowLoggingAdapter:
     def log(self, data, step):
         import mlflow
         mlflow.log_metrics(metrics=data, step=step)
+
+
+class _TensorboardLoggingAdapter:
+    
+    def __init__(self, writer):
+        self.writer = writer
+        
+    def log(self, data, step):
+        # Handle scalar metrics
+        for key, value in data.items():
+            if isinstance(value, (int, float)):
+                self.writer.add_scalar(key, value, step)
+            elif isinstance(value, list) and all(isinstance(x, (int, float)) for x in value):
+                # For lists of scalars, log as histogram
+                self.writer.add_histogram(key, value, step)
+            # Could expand with more types if needed (images, audio, etc.)
 
 
 def _compute_mlflow_params_from_objects(params) -> Dict[str, Any]:

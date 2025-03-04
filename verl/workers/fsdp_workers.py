@@ -166,6 +166,8 @@ class ActorRolloutRefWorker(Worker):
         self.processor = hf_processor(local_path, trust_remote_code=trust_remote_code)
 
         torch_dtype = fsdp_config.get('model_dtype', None)
+        # torch_dtype = fsdp_config.get('model_dtype', torch.bfloat16)
+        # print("Using bfloat16 as default!!!!!")
         if torch_dtype is None:
             torch_dtype = torch.float32 if self._is_actor else torch.bfloat16
         else:

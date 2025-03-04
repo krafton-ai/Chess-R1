@@ -107,6 +107,8 @@ def apply_kl_penalty(data: DataProto, kl_ctrl: core_algos.AdaptiveKLController, 
 
     # compute kl between ref_policy and current policy
     if 'ref_log_prob' in data.batch.keys():
+        # old_log_prob is actually the new log prob
+        # ref log prob is the reference aka old log prob
         kld = core_algos.kl_penalty(data.batch['old_log_probs'], data.batch['ref_log_prob'],
                                     kl_penalty=kl_penalty)  # (batch_size, response_length)
         kld = kld * response_mask
