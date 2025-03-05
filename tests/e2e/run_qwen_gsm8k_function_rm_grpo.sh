@@ -25,7 +25,7 @@ python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     trainer.critic_warmup=0 \
     trainer.logger=['console'] \
-    trainer.project_name='verl_example_gsm8k' \
+    trainer.group_name='verl_example_gsm8k' \
     trainer.experiment_name='qwen_e2e_ci_function_rm' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \

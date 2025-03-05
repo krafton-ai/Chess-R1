@@ -15,6 +15,7 @@
 A unified tracking interface that supports logging data to different backend
 """
 import dataclasses
+import datetime
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -24,7 +25,7 @@ from typing import List, Union, Dict, Any
 class Tracking(object):
     supported_backend = ['wandb', 'mlflow', 'console', 'tensorboard']
 
-    def __init__(self, project_name, experiment_name, default_backend: Union[str, List[str]] = 'console', config=None, capture_console=True):
+    def __init__(self, user_name, group_name, experiment_name, default_backend: Union[str, List[str]] = 'console', config=None, capture_console=True):
         if isinstance(default_backend, str):
             default_backend = [default_backend]
         for backend in default_backend:
@@ -36,13 +37,17 @@ class Tracking(object):
 
         self.logger = {}
 
+        # Add date information to log directory
+        current_date = datetime.datetime.now()
+        date_str = current_date.strftime("%m%d")
+
         if 'tracking' in default_backend or 'wandb' in default_backend:
             import wandb
             import os
             WANDB_API_KEY = os.environ.get("WANDB_API_KEY", None)
             if WANDB_API_KEY:
                 wandb.login(key=WANDB_API_KEY)
-            wandb.init(project=project_name, name=experiment_name, config=config)
+            wandb.init(project=group_name, name=experiment_name, config=config)
             self.logger['wandb'] = wandb
 
         if 'mlflow' in default_backend:
@@ -57,7 +62,7 @@ class Tracking(object):
                 import os
                 
                 # Create log directory using project and experiment names
-                log_dir = os.path.join('runs', project_name, experiment_name)
+                log_dir = os.path.join('tb_logs', user_name, date_str, group_name, experiment_name) # tb_logs/DY/0305/gamma_ablation/exp1
                 os.makedirs(log_dir, exist_ok=True)
                 
                 writer = SummaryWriter(log_dir=log_dir)

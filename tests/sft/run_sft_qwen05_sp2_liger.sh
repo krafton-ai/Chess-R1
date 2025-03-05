@@ -24,7 +24,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$nproc_per_node \
     model.partial_pretrain=Qwen/Qwen2.5-0.5B-Instruct \
     model.use_liger=True \
     trainer.default_local_dir=$save_path \
-    trainer.project_name=gsm8k-sft \
+    trainer.group_name=gsm8k-sft \
     trainer.experiment_name=gsm8k-sft-qwen-2.5-0.5b-instruct-sp2-liger \
     trainer.logger=['console'] \
     trainer.total_training_steps=1 \

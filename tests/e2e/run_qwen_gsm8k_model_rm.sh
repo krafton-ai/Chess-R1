@@ -40,7 +40,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.critic_warmup=0 \
     trainer.logger=['console'] \
     +trainer.val_before_train=False \
-    trainer.project_name='verl_example' \
+    trainer.group_name='verl_example' \
     trainer.experiment_name='Qwen2.5-0.5B-ci_hybrid_rm' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \

@@ -28,7 +28,7 @@ python3 -m verl.trainer.main_ppo \
     algorithm.kl_ctrl.kl_coef=0.001 \
     trainer.critic_warmup=0 \
     trainer.logger=['console'] \
-    trainer.project_name='verl_grpo_example_gsm8k' \
+    trainer.group_name='verl_grpo_example_gsm8k' \
     trainer.experiment_name='deepseek_llm_7b_function_rm' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \

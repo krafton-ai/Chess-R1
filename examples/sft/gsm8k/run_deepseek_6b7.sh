@@ -22,7 +22,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=$nproc_per_node \
     data.micro_batch_size_per_gpu=4 \
     model.partial_pretrain=deepseek-ai/deepseek-coder-6.7b-instruct \
     trainer.default_local_dir=$save_path \
-    trainer.project_name=gsm8k-sft \
+    trainer.group_name=gsm8k-sft \
     trainer.experiment_name=gsm8k-sft-deepseek-coder-6.7b-instruct \
     trainer.total_epochs=4 \
     trainer.logger=['console','wandb'] \

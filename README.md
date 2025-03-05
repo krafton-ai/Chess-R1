@@ -37,7 +37,7 @@ pip install wandb IPython matplotlib
 **Data Preparation**
 ```
 conda activate zero
-python ./examples/data_preprocess/countdown.py --local_dir {path_to_your_dataset}
+python ./examples/data_preprocess/countdown.py --local_dir {path_to_your_dataset (Not really necessary. Just use Default)}
 ```
 
 ### Run Training

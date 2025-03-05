@@ -117,14 +117,14 @@ You are expected to see the following logs, indicating training in progress. The
 
 Checkout :ref:`algo-baseline-page` for full training and validation logs for reference.
 
-The checkpoint is saved at the following dir by default: ``checkpoints/${trainer.project_name}/${trainer.experiment_name}``
+The checkpoint is saved at the following dir by default: ``checkpoints/${trainer.group_name}/${trainer.experiment_name}``
 
 To enable ``wandb`` for experiment tracking, set the following configs:
 
 .. code-block:: bash
 
     trainer.logger=['console','wandb'] \
-    trainer.project_name=$YOUR_PROJECT_NAME \
+    trainer.group_name=$YOUR_group_name \
     trainer.experiment_name=$YOUR_RUN_NAME \
 
 If you encounter out of memory issues with HBM less than 32GB, enable the following configs would help:

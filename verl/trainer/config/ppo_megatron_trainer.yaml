@@ -148,7 +148,7 @@ algorithm:
 trainer:
   total_epochs: 30
   total_training_steps: null
-  project_name: verl_examples
+  group_name: verl_examples
   experiment_name: gsm8k
   logger: ['console', 'wandb']
   val_generations_to_log_to_wandb: 0
@@ -161,4 +161,4 @@ trainer:
   test_freq: 2
   critic_warmup: 0
   default_hdfs_dir: null
-  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  default_local_dir: checkpoints/${trainer.group_name}/${trainer.experiment_name}

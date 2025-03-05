@@ -29,7 +29,7 @@ python3 -m verl.trainer.main_ppo \
     algorithm.kl_ctrl.kl_coef=0.001 \
     trainer.critic_warmup=0 \
     trainer.logger=['console','wandb'] \
-    trainer.project_name='verl_example' \
+    trainer.group_name='verl_example' \
     trainer.experiment_name='gemma2b_function_rm' \
     trainer.n_gpus_per_node=2 \
     trainer.nnodes=1 \

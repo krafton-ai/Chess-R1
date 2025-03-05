@@ -1,2 +1,0 @@
-[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/TinyZero/checkpoints/TinyZero/sanitycheck/rebase-sanity-countdown-qwen2.5-3b-grpo-smalltrainbatch/latest_checkpointed_iteration.txt
-[stdout] Training from scratch
