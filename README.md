@@ -3,19 +3,29 @@
 ## Installation
 
 ```
-conda create -n chess python=3.9
+conda create -n chess python=3.10 sqlite==3.42.0
 conda activate chess
+
 # install torch
-pip install torch==2.4.0 --index-url https://download.pytorch.org/whl/cu121
+pip install torch==2.4.0
+
 # install vllm
-pip3 install vllm==0.5.4
+pip3 install vllm==0.5.4 
 pip3 install ray[default]
+
+# ignore the warning for the conflict with torch2.4
+pip install nvidia-cublas-cu12==12.4.5.8
 
 # verl
 pip install -e .
 
 # flash attention 2
 pip3 install flash-attn --no-build-isolation
+
+# install tensorboard (allow host view in kubeflow)
+pip install tensorboard
+sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/chess/lib/python3.10/site-packages/tensorboard/plugins/core/core_plugin.py
+
 # utilities
 pip install wandb IPython matplotlib
 conda install tmux
@@ -25,9 +35,9 @@ conda install tmux
 
 **Data Preparation**
 ```
+source ~/.bashrc
 conda activate chess
 python ./examples/data_preprocess/countdown.py
-python ./examples/data_preprocess/countdown.py --template_type=qwen-instruct
 ```
 
 ### Run Training
