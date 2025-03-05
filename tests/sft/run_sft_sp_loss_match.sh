@@ -15,7 +15,7 @@ torchrun --standalone --nnodes=1 --nproc_per_node=8 \
     ulysses_sequence_parallel_size=2 \
     use_remove_padding=True \
     trainer.default_local_dir=$HOME/ckpts/ \
-    trainer.project_name=qwen2.5-sft \
+    trainer.group_name=qwen2.5-sft \
     trainer.experiment_name=gsm8k-sft-gemma-2b-it \
     trainer.total_training_steps=1 \
     trainer.logger=['console'] \

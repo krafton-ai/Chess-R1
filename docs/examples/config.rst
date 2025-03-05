@@ -337,7 +337,7 @@ Trainer
 
    trainer:
      total_epochs: 30
-     project_name: verl_examples
+     group_name: verl_examples
      experiment_name: gsm8k
      logger: ['console', 'wandb']
      nnodes: 1
@@ -346,10 +346,10 @@ Trainer
      test_freq: 2
      critic_warmup: 0
      default_hdfs_dir: ~/experiments/gsm8k/ppo/${trainer.experiment_name} # hdfs checkpoint path
-     default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name} # local checkpoint path
+     default_local_dir: checkpoints/${trainer.group_name}/${trainer.experiment_name} # local checkpoint path
 
 - ``trainer.total_epochs``: Number of epochs in training.
-- ``trainer.project_name``: For wandb
+- ``trainer.group_name``: For wandb
 - ``trainer.experiment_name``: For wandb
 - ``trainer.logger``: Support console and wandb
 - ``trainer.nnodes``: Number of nodes used in the training.

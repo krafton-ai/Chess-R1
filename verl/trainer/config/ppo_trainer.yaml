@@ -1,3 +1,7 @@
+hydra:
+  run:
+    dir: tb_logs/${trainer.user_name}/${now:%m%d}/${trainer.group_name}/${trainer.experiment_name}
+
 data:
   tokenizer: null
   train_files: ~/data/rlhf/gsm8k/train.parquet
@@ -158,8 +162,9 @@ algorithm:
 trainer:
   total_epochs: 30
   total_training_steps: null
-  project_name: verl_examples
-  experiment_name: gsm8k
+  user_name: DY # [DY, HJ, JH]
+  group_name: test
+  experiment_name: test
   logger: [ 'console', 'wandb' ]
   val_generations_to_log_to_wandb: 0
   nnodes: 1
@@ -173,4 +178,5 @@ trainer:
   default_hdfs_dir: null
   remove_previous_ckpt_in_save: False
   del_local_ckpt_after_load: False
-  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  default_local_dir: checkpoints/${trainer.group_name}/${trainer.experiment_name}
+

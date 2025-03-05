@@ -1,3 +1,0 @@
-[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/TinyZero/checkpoints/TinyZero/0304/countdown-qwen2.5-7b-grpo-optimizedconfigs/latest_checkpointed_iteration.txt
-[stdout] Training from scratch
-[stdout] epoch 0, step 1

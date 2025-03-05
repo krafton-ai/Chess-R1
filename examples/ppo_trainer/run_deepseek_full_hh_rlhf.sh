@@ -31,7 +31,7 @@ python3 -m verl.trainer.main_ppo --config-path=./config --config-name='ppo_megat
     algorithm.kl_ctrl.kl_coef=0.001 \
     trainer.critic_warmup=0 \
     trainer.logger=['console','wandb'] \
-    trainer.project_name='verl_megatron_full_hh_rlhf_examples' \
+    trainer.group_name='verl_megatron_full_hh_rlhf_examples' \
     trainer.experiment_name='deepseek_llm_7b_model_rm' \
     trainer.n_gpus_per_node=8 \
     trainer.nnodes=1 \
