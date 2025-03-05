@@ -1,12 +1,12 @@
-export N_GPUS=4
+export N_GPUS=2
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 ray stop --force && ray start --head --include-dashboard=True
-export BASE_MODEL="Qwen/Qwen2.5-3B"
+export BASE_MODEL="Qwen/Qwen2.5-7B"
 export DATA_DIR="data/countdown"
 export ROLLOUT_TP_SIZE=4
 export VLLM_ATTENTION_BACKEND=XFORMERS
 
-export USER_NAME=DY
+export USER_NAME=HJ
 export GROUP_NAME=test
 export EXPERIMENT_NAME=test_exp
 
