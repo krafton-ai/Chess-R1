@@ -21,14 +21,23 @@ import torch
 import torch.distributed
 import torch.nn as nn
 
-from vllm.config import (CacheConfig, DeviceConfig, ModelConfig, ParallelConfig, SchedulerConfig, LoRAConfig)
+from vllm.config import (
+    CacheConfig,
+    DeviceConfig,
+    ModelConfig,
+    ParallelConfig,
+    SchedulerConfig,
+    LoRAConfig,
+)
 from vllm.model_executor import InputMetadata, set_random_seed
-from vllm.model_executor.parallel_utils.parallel_state import (initialize_model_parallel)
+from vllm.model_executor.parallel_utils.parallel_state import initialize_model_parallel
 from vllm.sampling_params import SamplingParams, SamplingType
 from vllm.sequence import SamplerOutput, SequenceData, SequenceGroupMetadata
 from vllm.worker.cache_engine import CacheEngine
 from vllm.model_executor.parallel_utils.custom_all_reduce import init_custom_ar
-from vllm.model_executor.parallel_utils.parallel_state import get_tensor_model_parallel_group
+from vllm.model_executor.parallel_utils.parallel_state import (
+    get_tensor_model_parallel_group,
+)
 
 from .model_runner import ModelRunner
 from .model_loader import load_weights
@@ -46,7 +55,7 @@ class Worker:
 
     def __init__(
         self,
-        model: Union[nn.Module, Dict], # model itself or its parameter dict
+        model: Union[nn.Module, Dict],  # model itself or its parameter dict
         model_config: ModelConfig,
         parallel_config: ParallelConfig,
         scheduler_config: SchedulerConfig,
@@ -107,7 +116,9 @@ class Worker:
 
         # Initialize the distributed environment.
         # TODO: do not use cupy
-        _init_distributed_environment(self.parallel_config, self.rank, self.distributed_init_method)
+        _init_distributed_environment(
+            self.parallel_config, self.rank, self.distributed_init_method
+        )
         if not self.parallel_config.disable_custom_all_reduce:
             init_custom_ar()
         # Initialize the model.
@@ -140,10 +151,13 @@ class Worker:
         free_gpu_memory, total_gpu_memory = torch.cuda.mem_get_info()
         peak_memory = total_gpu_memory - free_gpu_memory
 
-        cache_block_size = CacheEngine.get_cache_block_size(block_size, cache_dtype, self.model_config,
-                                                            self.parallel_config)
+        cache_block_size = CacheEngine.get_cache_block_size(
+            block_size, cache_dtype, self.model_config, self.parallel_config
+        )
         # NOTE(sgm) use the remaining memory
-        num_gpu_blocks = int((free_gpu_memory * gpu_memory_utilization) // cache_block_size)
+        num_gpu_blocks = int(
+            (free_gpu_memory * gpu_memory_utilization) // cache_block_size
+        )
         # num_gpu_blocks = int((total_gpu_memory * gpu_memory_utilization - peak_memory) // cache_block_size)
         num_cpu_blocks = int(cpu_swap_space // cache_block_size)
         num_gpu_blocks = max(num_gpu_blocks, 0)
@@ -153,14 +167,18 @@ class Worker:
         gc.collect()
         torch.cuda.empty_cache()
         # Synchronize number of blocks with all the rank
-        num_gpu_blocks = torch.tensor([num_gpu_blocks], device='cuda')
-        num_cpu_blocks = torch.tensor([num_cpu_blocks], device='cuda')
-        torch.distributed.all_reduce(num_gpu_blocks,
-                                     op=torch.distributed.ReduceOp.MIN,
-                                     group=get_tensor_model_parallel_group())
-        torch.distributed.all_reduce(num_cpu_blocks,
-                                     op=torch.distributed.ReduceOp.MIN,
-                                     group=get_tensor_model_parallel_group())
+        num_gpu_blocks = torch.tensor([num_gpu_blocks], device="cuda")
+        num_cpu_blocks = torch.tensor([num_cpu_blocks], device="cuda")
+        torch.distributed.all_reduce(
+            num_gpu_blocks,
+            op=torch.distributed.ReduceOp.MIN,
+            group=get_tensor_model_parallel_group(),
+        )
+        torch.distributed.all_reduce(
+            num_cpu_blocks,
+            op=torch.distributed.ReduceOp.MIN,
+            group=get_tensor_model_parallel_group(),
+        )
         num_gpu_blocks = num_gpu_blocks.item()
         num_cpu_blocks = num_cpu_blocks.item()
         return num_gpu_blocks, num_cpu_blocks
@@ -168,7 +186,9 @@ class Worker:
     def init_cache_engine(self, cache_config: CacheConfig) -> None:
         if self.cache_engine is None and self.gpu_cache is None:
             self.cache_config = cache_config
-            self.cache_engine = CacheEngine(self.cache_config, self.model_config, self.parallel_config)
+            self.cache_engine = CacheEngine(
+                self.cache_config, self.model_config, self.parallel_config
+            )
             self.cache_events = self.cache_engine.events
             self.gpu_cache = self.cache_engine.gpu_cache
             self.model_runner.set_block_size(self.cache_engine.block_size)
@@ -225,7 +245,9 @@ class Worker:
         # If there is no input, we don't need to execute the model.
         if num_seq_groups == 0:
             return {}
-        output = self.model_runner.execute_model(seq_group_metadata_list, self.gpu_cache)
+        output = self.model_runner.execute_model(
+            seq_group_metadata_list, self.gpu_cache
+        )
         return output
 
         # # Prepare input tensors.
@@ -251,7 +273,7 @@ class Worker:
         if self.cpu_model == None:
             self.cpu_model = {}
             for name, params in self.model_runner.model.named_parameters():
-                self.cpu_model[name] = torch.empty_like(params, device='cpu')
+                self.cpu_model[name] = torch.empty_like(params, device="cpu")
                 params.data = self.cpu_model[name]
         else:
             for name, params in self.model_runner.model.named_parameters():
@@ -274,10 +296,12 @@ def _init_distributed_environment(
 ) -> None:
     """Initialize the distributed environment."""
     if torch.distributed.is_initialized():
-        print('The distributed environment has been initialized before vLLM')
+        print("The distributed environment has been initialized before vLLM")
     elif not distributed_init_method:
-        raise ValueError("distributed_init_method must be set if torch.distributed "
-                         "is not already initialized")
+        raise ValueError(
+            "distributed_init_method must be set if torch.distributed "
+            "is not already initialized"
+        )
     else:
         torch.distributed.init_process_group(
             backend="nccl",
@@ -290,7 +314,9 @@ def _init_distributed_environment(
     torch.distributed.all_reduce(torch.zeros(1).cuda())
     # TODO (shengguangming): maybe we should also flag the megatron is initialized
     if torch.distributed.get_world_size() > 1:
-        initialize_model_parallel_from_megatron(tensor_model_parallel_size=parallel_config.tensor_parallel_size)
+        initialize_model_parallel_from_megatron(
+            tensor_model_parallel_size=parallel_config.tensor_parallel_size
+        )
     else:
         initialize_model_parallel()
 
@@ -309,6 +335,8 @@ def _check_if_gpu_supports_dtype(torch_dtype: torch.dtype):
         compute_capability = torch.cuda.get_device_capability()
         if compute_capability[0] < 8:
             gpu_name = torch.cuda.get_device_name()
-            raise ValueError("Bfloat16 is only supported on GPUs with compute capability "
-                             f"of at least 8.0. Your {gpu_name} GPU has compute capability "
-                             f"{compute_capability[0]}.{compute_capability[1]}.")
+            raise ValueError(
+                "Bfloat16 is only supported on GPUs with compute capability "
+                f"of at least 8.0. Your {gpu_name} GPU has compute capability "
+                f"{compute_capability[0]}.{compute_capability[1]}."
+            )

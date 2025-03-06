@@ -88,8 +88,10 @@ class LLM:
 
     def __init__(
         self,
-        model: Union[nn.Module, Dict], # model itself or its parameter dict
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer],
+        model: Union[nn.Module, Dict],  # model itself or its parameter dict
+        tokenizer: Union[
+            PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer
+        ],
         model_hf_config: PretrainedConfig,
         tokenizer_mode: str = "auto",
         trust_remote_code: bool = False,
@@ -104,7 +106,7 @@ class LLM:
         enforce_eager: bool = False,
         max_context_len_to_capture: int = None,
         disable_custom_all_reduce: bool = False,
-        load_format = 'auto',
+        load_format="auto",
         **kwargs,
     ) -> None:
         if "disable_log_stats" not in kwargs:
@@ -125,7 +127,11 @@ class LLM:
             load_format=load_format,
             **kwargs,
         )
-        tokenizer_cls = (PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer)
+        tokenizer_cls = (
+            PreTrainedTokenizer,
+            PreTrainedTokenizerFast,
+            HybridEngineBaseTokenizer,
+        )
         if not isinstance(tokenizer, tokenizer_cls):
             raise ValueError(
                 f"Unexpected tokenizer type: {type(tokenizer)}. Must be"
@@ -167,9 +173,9 @@ class LLM:
         Args:
             prompts: A list of prompts to generate completions for.
             sampling_params: The sampling parameters for text generation. If
-                None, we use the default sampling parameters. 
-                When it is a single value, it is applied to every prompt. 
-                When it is a list, the list must have the same length as the 
+                None, we use the default sampling parameters.
+                When it is a single value, it is applied to every prompt.
+                When it is a list, the list must have the same length as the
                 prompts and it is paired one by one with the prompt.
             prompt_token_ids: A list of token IDs for the prompts. If None, we
                 use the tokenizer to convert the prompts to token IDs.
@@ -182,18 +188,20 @@ class LLM:
             completions in the same order as the input prompts.
         """
         if prompts is None and prompt_token_ids is None:
-            raise ValueError("Either prompts or prompt_token_ids must be "
-                             "provided.")
-        if self.llm_engine.model_config.skip_tokenizer_init \
-            and prompts is not None:
-            raise ValueError("prompts must be None if skip_tokenizer_init "
-                             "is True")
+            raise ValueError("Either prompts or prompt_token_ids must be " "provided.")
+        if self.llm_engine.model_config.skip_tokenizer_init and prompts is not None:
+            raise ValueError("prompts must be None if skip_tokenizer_init " "is True")
         if isinstance(prompts, str):
             # Convert a single prompt to a list.
             prompts = [prompts]
-        if (prompts is not None and prompt_token_ids is not None and len(prompts) != len(prompt_token_ids)):
-            raise ValueError("The lengths of prompts and prompt_token_ids "
-                             "must be the same.")
+        if (
+            prompts is not None
+            and prompt_token_ids is not None
+            and len(prompts) != len(prompt_token_ids)
+        ):
+            raise ValueError(
+                "The lengths of prompts and prompt_token_ids " "must be the same."
+            )
 
         if prompts is not None:
             num_requests = len(prompts)
@@ -206,8 +214,9 @@ class LLM:
             sampling_params = SamplingParams()
 
         elif isinstance(sampling_params, list) and len(sampling_params) != num_requests:
-            raise ValueError("The lengths of prompts and sampling_params "
-                             "must be the same.")
+            raise ValueError(
+                "The lengths of prompts and sampling_params " "must be the same."
+            )
         if multi_modal_data:
             multi_modal_data.data = multi_modal_data.data.to(torch.float16)
 
@@ -220,12 +229,22 @@ class LLM:
                 token_ids = self._pre_process_inputs(token_ids)
             self._add_request(
                 prompt,
-                sampling_params[i] if isinstance(sampling_params, list) else sampling_params,
+                (
+                    sampling_params[i]
+                    if isinstance(sampling_params, list)
+                    else sampling_params
+                ),
                 token_ids,
                 lora_request=lora_request,
                 # Get ith image while maintaining the batch dim.
-                multi_modal_data=MultiModalData(type=multi_modal_data.type, data=multi_modal_data.data[i].unsqueeze(0))
-                if multi_modal_data else None,
+                multi_modal_data=(
+                    MultiModalData(
+                        type=multi_modal_data.type,
+                        data=multi_modal_data.data[i].unsqueeze(0),
+                    )
+                    if multi_modal_data
+                    else None
+                ),
             )
         return self._run_engine(use_tqdm)
 
@@ -238,18 +257,22 @@ class LLM:
         multi_modal_data: Optional[MultiModalData] = None,
     ) -> None:
         request_id = str(next(self.request_counter))
-        self.llm_engine.add_request(request_id,
-                                    prompt,
-                                    sampling_params,
-                                    prompt_token_ids,
-                                    lora_request=lora_request,
-                                    multi_modal_data=multi_modal_data)
+        self.llm_engine.add_request(
+            request_id,
+            prompt,
+            sampling_params,
+            prompt_token_ids,
+            lora_request=lora_request,
+            multi_modal_data=multi_modal_data,
+        )
 
     def _run_engine(self, use_tqdm: bool) -> List[RequestOutput]:
         # Initialize tqdm.
         if use_tqdm:
             num_requests = self.llm_engine.get_num_unfinished_requests()
-            pbar = tqdm(total=num_requests, desc="Processed prompts", dynamic_ncols=True)
+            pbar = tqdm(
+                total=num_requests, desc="Processed prompts", dynamic_ncols=True
+            )
         # Run the engine.
         outputs: List[RequestOutput] = []
         while self.llm_engine.has_unfinished_requests():
@@ -272,13 +295,21 @@ class LLM:
     # TODO(sgm): we can optimize it by making the dataloader yield List[int] without padding.
     def _pre_process_inputs(self, prompt_token_ids: torch.Tensor) -> List[int]:
         # remove the left padding in the prompt token_id
-        pad_token_id = self.llm_engine.tokenizer.pad_token_id if self.llm_engine.tokenizer.pad_token_id is not None else self.llm_engine.tokenizer.eos_token_id
-        non_pad_index = torch.nonzero(prompt_token_ids != pad_token_id, as_tuple=False)[0][0]
+        pad_token_id = (
+            self.llm_engine.tokenizer.pad_token_id
+            if self.llm_engine.tokenizer.pad_token_id is not None
+            else self.llm_engine.tokenizer.eos_token_id
+        )
+        non_pad_index = torch.nonzero(prompt_token_ids != pad_token_id, as_tuple=False)[
+            0
+        ][0]
         token_ids = prompt_token_ids[non_pad_index:].tolist()
         return token_ids
 
     # NOTE(shengguangming): add for verl
-    def _post_process_outputs(self, request_outputs: List[RequestOutput]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _post_process_outputs(
+        self, request_outputs: List[RequestOutput]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         output_token_ids = []
         logprobs = []
         for request_output in request_outputs:  # List[RequestOutput]
@@ -293,14 +324,26 @@ class LLM:
                         logprob.append(logprobs_dict[id].logprob)
                     logprobs.append(torch.tensor(logprob))
 
-        pad_token_id = self.llm_engine.tokenizer.pad_token_id if self.llm_engine.tokenizer.pad_token_id is not None else self.llm_engine.tokenizer.eos_token_id
-        output_token_ids = pad_sequence(output_token_ids, batch_first=True, padding_value=pad_token_id)
+        pad_token_id = (
+            self.llm_engine.tokenizer.pad_token_id
+            if self.llm_engine.tokenizer.pad_token_id is not None
+            else self.llm_engine.tokenizer.eos_token_id
+        )
+        output_token_ids = pad_sequence(
+            output_token_ids, batch_first=True, padding_value=pad_token_id
+        )
         if len(logprobs) > 0:
-            logprobs = pad_sequence(logprobs, batch_first=True, padding_value=pad_token_id)
+            logprobs = pad_sequence(
+                logprobs, batch_first=True, padding_value=pad_token_id
+            )
         return output_token_ids, logprobs
 
-    def sync_model_weights(self, actor_weights: Dict[str, torch.Tensor], load_format: str) -> None:
-        self.llm_engine.sync_model_weights(actor_weights=actor_weights, load_format=load_format)
+    def sync_model_weights(
+        self, actor_weights: Dict[str, torch.Tensor], load_format: str
+    ) -> None:
+        self.llm_engine.sync_model_weights(
+            actor_weights=actor_weights, load_format=load_format
+        )
 
     def offload_model_weights(self) -> None:
         self.llm_engine.offload_model_weights()

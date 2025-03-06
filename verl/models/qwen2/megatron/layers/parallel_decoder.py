@@ -35,7 +35,9 @@ class ParallelQwen2DecoderLayer(nn.Module):
     def __init__(self, config: Qwen2Config, megatron_config: ModelParallelConfig):
         super().__init__()
         self.hidden_size = config.hidden_size
-        self.self_attn = ParallelQwen2Attention(config=config, megatron_config=megatron_config)
+        self.self_attn = ParallelQwen2Attention(
+            config=config, megatron_config=megatron_config
+        )
 
         self.mlp = ParallelQwen2MLP(config, megatron_config=megatron_config)
         self.input_layernorm = ParallelQwen2RMSNorm(config, megatron_config)
@@ -46,7 +48,9 @@ class ParallelQwen2DecoderLayer(nn.Module):
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
-    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+    ) -> Tuple[
+        torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]
+    ]:
         """
         Args:
             hidden_states (`torch.FloatTensor`): input to the layer of shape `(batch, seq_len, embed_dim)`
@@ -103,7 +107,9 @@ class ParallelQwen2DecoderLayerRmPad(nn.Module):
         self.config = config
         self.megatron_config = megatron_config
         self.hidden_size = config.hidden_size
-        self.self_attn = ParallelQwen2AttentionRmPad(config=config, megatron_config=megatron_config)
+        self.self_attn = ParallelQwen2AttentionRmPad(
+            config=config, megatron_config=megatron_config
+        )
 
         self.mlp = ParallelQwen2MLP(config, megatron_config=megatron_config)
         self.input_layernorm = ParallelQwen2RMSNorm(config, megatron_config)
@@ -116,8 +122,10 @@ class ParallelQwen2DecoderLayerRmPad(nn.Module):
         sequence_length: int = None,
         indices: torch.Tensor = None,
         cu_seqlens: int = None,
-        max_seqlen_in_batch: int = None
-    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+        max_seqlen_in_batch: int = None,
+    ) -> Tuple[
+        torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]
+    ]:
         residual = hidden_states  # (total_nnz // sp, 1, hidden_size)
 
         hidden_states = self.input_layernorm(hidden_states)
@@ -125,12 +133,14 @@ class ParallelQwen2DecoderLayerRmPad(nn.Module):
         # Self Attention
         # (total_nnz // sp, 1, hidden_size) -> all-gather (total_nnz, 1, hidden_size)
         # -> col + row -> reduce-scatter -> (total_nnz // sp, 1, hidden_size)
-        hidden_states = self.self_attn(hidden_states=hidden_states,
-                                       position_ids=position_ids,
-                                       sequence_length=sequence_length,
-                                       indices=indices,
-                                       cu_seqlens=cu_seqlens,
-                                       max_seqlen_in_batch=max_seqlen_in_batch)
+        hidden_states = self.self_attn(
+            hidden_states=hidden_states,
+            position_ids=position_ids,
+            sequence_length=sequence_length,
+            indices=indices,
+            cu_seqlens=cu_seqlens,
+            max_seqlen_in_batch=max_seqlen_in_batch,
+        )
 
         hidden_states = residual + hidden_states
 

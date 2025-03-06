@@ -21,4 +21,5 @@ from .modeling_llama_megatron import (
     ParallelLlamaForValueRmPad,
     # rmpad with megatron and pipeline parallelism
     ParallelLlamaForCausalLMRmPadPP,
-    ParallelLlamaForValueRmPadPP)
+    ParallelLlamaForValueRmPadPP,
+)

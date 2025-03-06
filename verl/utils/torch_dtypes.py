@@ -73,10 +73,10 @@ class PrecisionType(object):
     @staticmethod
     def to_str(precision):
         if precision == torch.float16:
-            return 'fp16'
+            return "fp16"
         elif precision == torch.float32:
-            return 'fp32'
+            return "fp32"
         elif precision == torch.bfloat16:
-            return 'bf16'
+            return "bf16"
         else:
             raise RuntimeError(f"unexpected precision: {precision}")

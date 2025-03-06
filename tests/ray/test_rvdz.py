@@ -26,7 +26,10 @@ class TestWorker:
 
     def init(self):
         from verl.utils.rendezvous.ray_backend import create_nccl_communicator_in_ray
-        self.communicator = create_nccl_communicator_in_ray(self.rank, self.world_size, self.group_name)
+
+        self.communicator = create_nccl_communicator_in_ray(
+            self.rank, self.world_size, self.group_name
+        )
 
     def test(self):
         if self.communicator is None:
@@ -40,7 +43,10 @@ def test_rvdz():
     group_name = "test_group"
     world_size = 2
 
-    workers = [TestWorker.options(num_gpus=1).remote(rank, world_size, group_name) for rank in range(world_size)]
+    workers = [
+        TestWorker.options(num_gpus=1).remote(rank, world_size, group_name)
+        for rank in range(world_size)
+    ]
 
     ray.get([worker.init.remote() for worker in workers])
 

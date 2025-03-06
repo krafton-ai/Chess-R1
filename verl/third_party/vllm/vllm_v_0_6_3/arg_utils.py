@@ -72,7 +72,9 @@ class EngineArgs(EngineArgs):
 
         # NOTE[VERL]: Use the world_size set by torchrun
         world_size = int(os.getenv("WORLD_SIZE", "-1"))
-        assert world_size != -1, "The world_size is set to -1, not initialized by TORCHRUN"
+        assert (
+            world_size != -1
+        ), "The world_size is set to -1, not initialized by TORCHRUN"
         engine_config.parallel_config.world_size = world_size
 
         return engine_config

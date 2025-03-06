@@ -18,7 +18,11 @@ import os
 
 import ray
 
-from verl.single_controller.ray.base import RayResourcePool, RayClassWithInitArgs, RayWorkerGroup
+from verl.single_controller.ray.base import (
+    RayResourcePool,
+    RayClassWithInitArgs,
+    RayWorkerGroup,
+)
 from verl.single_controller.base.worker import Worker
 from verl.single_controller.base.decorator import register, Dispatch
 
@@ -56,8 +60,10 @@ if __name__ == "__main__":
     _ = wg.foo(wait_time)
     print("foo started")
 
-    print(time.time(),
-          f"wait 6x wait time {wait_time*6} to let signal returned to process but still not exceed process wait time")
+    print(
+        time.time(),
+        f"wait 6x wait time {wait_time*6} to let signal returned to process but still not exceed process wait time",
+    )
     time.sleep(wait_time * 6)
 
     ray.shutdown()

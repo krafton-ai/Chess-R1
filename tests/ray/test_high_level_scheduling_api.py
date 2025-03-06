@@ -16,7 +16,12 @@ import time
 
 import ray
 
-from verl.single_controller.ray.base import RayResourcePool, RayClassWithInitArgs, RayWorkerGroup, merge_resource_pool
+from verl.single_controller.ray.base import (
+    RayResourcePool,
+    RayClassWithInitArgs,
+    RayWorkerGroup,
+    merge_resource_pool,
+)
 from verl.single_controller.base.worker import Worker
 
 
@@ -40,18 +45,34 @@ def test():
     class_with_args = RayClassWithInitArgs(cls=TestActor)
 
     print("create actor worker group")
-    actor_wg = RayWorkerGroup(resource_pool, class_with_args, name_prefix="high_level_api_actor")
+    actor_wg = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="high_level_api_actor"
+    )
     print("create critic worker group")
-    critic_wg = RayWorkerGroup(resource_pool, class_with_args, name_prefix="hight_level_api_critic")
+    critic_wg = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="hight_level_api_critic"
+    )
     print("create rm worker group")
-    rm_wg = RayWorkerGroup(resource_pool, class_with_args, name_prefix="high_level_api_rm")
+    rm_wg = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="high_level_api_rm"
+    )
     print("create ref worker group")
-    ref_wg = RayWorkerGroup(resource_pool, class_with_args, name_prefix="high_level_api_ref")
+    ref_wg = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="high_level_api_ref"
+    )
 
-    assert actor_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
-    assert critic_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
-    assert rm_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
-    assert ref_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
+    assert actor_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
+    assert critic_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
+    assert rm_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
+    assert ref_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
 
     del actor_wg
     del critic_wg
@@ -72,14 +93,30 @@ def test():
     assert ref_resource_pool.world_size == 4
     assert total_resource_pool.world_size == 8
 
-    actor_wg = RayWorkerGroup(total_resource_pool, class_with_args, name_prefix="high_level_api_actor")
-    critic_wg = RayWorkerGroup(total_resource_pool, class_with_args, name_prefix="high_level_api_critic")
-    rm_wg = RayWorkerGroup(rm_resource_pool, class_with_args, name_prefix="high_level_api_rm")
-    ref_wg = RayWorkerGroup(ref_resource_pool, class_with_args, name_prefix="high_level_api_ref")
+    actor_wg = RayWorkerGroup(
+        total_resource_pool, class_with_args, name_prefix="high_level_api_actor"
+    )
+    critic_wg = RayWorkerGroup(
+        total_resource_pool, class_with_args, name_prefix="high_level_api_critic"
+    )
+    rm_wg = RayWorkerGroup(
+        rm_resource_pool, class_with_args, name_prefix="high_level_api_rm"
+    )
+    ref_wg = RayWorkerGroup(
+        ref_resource_pool, class_with_args, name_prefix="high_level_api_ref"
+    )
 
-    assert actor_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
-    assert critic_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(8)]
-    assert rm_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(4)]
-    assert ref_wg.execute_all_sync("get_cuda_visible_devices") == [str(i) for i in range(4, 8)]
+    assert actor_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
+    assert critic_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(8)
+    ]
+    assert rm_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(4)
+    ]
+    assert ref_wg.execute_all_sync("get_cuda_visible_devices") == [
+        str(i) for i in range(4, 8)
+    ]
 
     ray.shutdown()
