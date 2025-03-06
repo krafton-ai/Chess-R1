@@ -24,6 +24,7 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 
 def update_hf_weight_loader():
     from vllm.model_executor.models.gemma import GemmaForCausalLM
+
     GemmaForCausalLM.load_weights = gemma_load_weights
 
 
@@ -39,7 +40,7 @@ def gemma_load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
     params_dict = dict(self.named_parameters())
     loaded_params = set()
     for name, loaded_weight in weights:
-        for (param_name, shard_name, shard_id) in stacked_params_mapping:
+        for param_name, shard_name, shard_id in stacked_params_mapping:
             if shard_name not in name:
                 continue
             name = name.replace(shard_name, param_name)
@@ -61,7 +62,9 @@ def gemma_load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
             # GemmaRMSNorm is different from Llama's in that it multiplies
             # (1 + weight) to the output, instead of just weight.
             if "norm.weight" in name:
-                norm_weight = loaded_weight + 1.0  # prevent inplace modify actor weights
+                norm_weight = (
+                    loaded_weight + 1.0
+                )  # prevent inplace modify actor weights
                 param = params_dict[name]
                 weight_loader = getattr(param, "weight_loader", default_weight_loader)
                 weight_loader(param, norm_weight)
@@ -72,8 +75,9 @@ def gemma_load_weights(self, weights: Iterable[Tuple[str, torch.Tensor]]):
         loaded_params.add(name)
     unloaded_params = params_dict.keys() - loaded_params
     if unloaded_params:
-        raise RuntimeError("Some weights are not initialized from checkpoints: "
-                           f"{unloaded_params}")
+        raise RuntimeError(
+            "Some weights are not initialized from checkpoints: " f"{unloaded_params}"
+        )
 
 
 def load_hf_weights(actor_weights: Dict, vllm_model: nn.Module):

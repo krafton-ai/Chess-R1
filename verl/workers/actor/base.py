@@ -20,7 +20,7 @@ from typing import Iterable, Dict
 from verl import DataProto
 import torch
 
-__all__ = ['BasePPOActor']
+__all__ = ["BasePPOActor"]
 
 
 class BasePPOActor(ABC):

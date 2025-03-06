@@ -41,7 +41,7 @@ def levenshtein(s1, s2):
             dp[i][j] = min(
                 dp[i - 1][j] + 1,  # Deletion
                 dp[i][j - 1] + 1,  # Insertion
-                dp[i - 1][j - 1] + cost  # Substitution
+                dp[i - 1][j - 1] + cost,  # Substitution
             )
     return dp[m][n]
 
@@ -68,19 +68,22 @@ def are_lists_similar(a, b):
 
 
 def test_vllm_spmd():
-    assert torch.cuda.device_count() >= 2, 'At least 2 GPUs is required to run tp+dp tests.'
+    assert (
+        torch.cuda.device_count() >= 2
+    ), "At least 2 GPUs is required to run tp+dp tests."
 
     # fill rollout config
     max_prompt_length = 16
     max_response_length = 16
 
     # Initialize model and token
-    local_cache_path = '~/.cache/verl/rlhf'
+    local_cache_path = "~/.cache/verl/rlhf"
     local_cache_path = os.path.expanduser(local_cache_path)
-    hdfs_path = 'Qwen/Qwen2-7B-Instruct'
+    hdfs_path = "Qwen/Qwen2-7B-Instruct"
     from verl.utils.fs import copy_to_local
+
     local_model_path = copy_to_local(src=hdfs_path, cache_dir=local_cache_path)
-    tokenizer = AutoTokenizer.from_pretrained(local_model_path, padding_side='left')
+    tokenizer = AutoTokenizer.from_pretrained(local_model_path, padding_side="left")
 
     preencode_prompts = [
         "Who won the Champions League in 2019?",
@@ -88,12 +91,16 @@ def test_vllm_spmd():
         "What's your name",
     ]
     tokenizer.pad_token = tokenizer.eos_token
-    prompts = tokenizer(preencode_prompts, return_tensors='pt', padding=True)
-    input_ids = prompts['input_ids']
-    attention_mask = prompts['attention_mask']
+    prompts = tokenizer(preencode_prompts, return_tensors="pt", padding=True)
+    input_ids = prompts["input_ids"]
+    attention_mask = prompts["attention_mask"]
 
-    input_ids = pad_sequence_to_length(input_ids, max_prompt_length, tokenizer.pad_token_id, left_pad=True)
-    attention_mask = pad_sequence_to_length(attention_mask, max_prompt_length, 0, left_pad=True)
+    input_ids = pad_sequence_to_length(
+        input_ids, max_prompt_length, tokenizer.pad_token_id, left_pad=True
+    )
+    attention_mask = pad_sequence_to_length(
+        attention_mask, max_prompt_length, 0, left_pad=True
+    )
 
     actor_model = AutoModelForCausalLM.from_pretrained(local_model_path)
     actor_model.to(torch.bfloat16)
@@ -103,24 +110,28 @@ def test_vllm_spmd():
     temperature = 0
     top_p = 1
 
-    kwargs = dict(n=1,
-                  temperature=temperature,
-                  top_p=top_p,
-                  max_tokens=max_response_length,
-                  logprobs=1,
-                  ignore_eos=True)
+    kwargs = dict(
+        n=1,
+        temperature=temperature,
+        top_p=top_p,
+        max_tokens=max_response_length,
+        logprobs=1,
+        ignore_eos=True,
+    )
 
     sampling_params = SamplingParams(**kwargs)
     tensor_parallel_size = 4
 
-    llm = LLM(model=local_model_path,
-              enable_sleep_mode=True,
-              tensor_parallel_size=tensor_parallel_size,
-              distributed_executor_backend="external_launcher",
-              dtype='bfloat16',
-              gpu_memory_utilization=0.5)
+    llm = LLM(
+        model=local_model_path,
+        enable_sleep_mode=True,
+        tensor_parallel_size=tensor_parallel_size,
+        distributed_executor_backend="external_launcher",
+        dtype="bfloat16",
+        gpu_memory_utilization=0.5,
+    )
 
-    print('start generation')
+    print("start generation")
     input_ids = input_ids.cuda()
     attention_mask = attention_mask.cuda()
     batch_size = input_ids.size(0)
@@ -138,24 +149,28 @@ def test_vllm_spmd():
         # renormalize_logits=True,
         output_scores=False,  # this is potentially very large
         return_dict_in_generate=True,
-        use_cache=False)  # may OOM when use_cache = True
+        use_cache=False,
+    )  # may OOM when use_cache = True
     seq = output.sequences
     response = seq[:, max_prompt_length:]
 
     hf_response_tokens = tokenizer.batch_decode(response)
-    print(f'hf response: {hf_response_tokens}')
+    print(f"hf response: {hf_response_tokens}")
 
-    outputs = llm.generate(preencode_prompts, sampling_params=sampling_params, use_tqdm=False)
+    outputs = llm.generate(
+        preencode_prompts, sampling_params=sampling_params, use_tqdm=False
+    )
     vllm_response_tokens = []
     for output in outputs:
         prompt = output.prompt
         generated_text = output.outputs[0].text
         vllm_response_tokens.append(generated_text)
 
-    print(f'vllm response: {vllm_response_tokens}')
-    assert are_lists_similar(hf_response_tokens, vllm_response_tokens), \
-        f'Strings differ more than 10%:\n'
-    print('Check Pass')
+    print(f"vllm response: {vllm_response_tokens}")
+    assert are_lists_similar(
+        hf_response_tokens, vllm_response_tokens
+    ), f"Strings differ more than 10%:\n"
+    print("Check Pass")
 
 
 # if __name__ == "__main__":

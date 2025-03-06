@@ -60,14 +60,16 @@ class FlopsCounter:
 
     def __init__(self, config: PretrainedConfig):
         if not config.model_type in VALID_CONFIG_TYPE:
-            print(f"Only support config type of {VALID_CONFIG_TYPE}, but got {self.config.model_type}. "
-                  f"MFU will always be zero.")
+            print(
+                f"Only support config type of {VALID_CONFIG_TYPE}, but got {self.config.model_type}. "
+                f"MFU will always be zero."
+            )
 
         self.estimate_func = {
-            'qwen2': self._estimate_qwen2_flops,
-            'llama': self._estimate_qwen2_flops,
-            'qwen2_vl': self._estimate_qwen2_flops,
-            'qwen2_5_vl': self._estimate_qwen2_flops
+            "qwen2": self._estimate_qwen2_flops,
+            "llama": self._estimate_qwen2_flops,
+            "qwen2_vl": self._estimate_qwen2_flops,
+            "qwen2_5_vl": self._estimate_qwen2_flops,
         }
         self.config = config
 
@@ -90,7 +92,9 @@ class FlopsCounter:
         # non-attn per layer parm
         # Qwen2/LLama use SwiGelu, gate, having up and down linear layer in mlp
         mlp_N = hidden_size * intermediate_size * 3
-        attn_linear_N = hidden_size * (q_size + k_size + v_size + num_attention_heads * head_dim)
+        attn_linear_N = hidden_size * (
+            q_size + k_size + v_size + num_attention_heads * head_dim
+        )
         emd_and_lm_head_N = vocab_size * hidden_size * 2
         # non-attn all_layer parm
         dense_N = (mlp_N + attn_linear_N) * num_hidden_layers + emd_and_lm_head_N
@@ -101,7 +105,9 @@ class FlopsCounter:
         seqlen_square_sum = 0
         for seqlen in batch_seqlens:
             seqlen_square_sum += seqlen * seqlen
-        attn_qkv_flops = 12 * seqlen_square_sum * head_dim * num_attention_heads * num_hidden_layers
+        attn_qkv_flops = (
+            12 * seqlen_square_sum * head_dim * num_attention_heads * num_hidden_layers
+        )
 
         # all_layer & all_token fwd & bwd flops
         flops_all_token = dense_N_flops + attn_qkv_flops
@@ -121,7 +127,9 @@ class FlopsCounter:
             promised_flops (float): The expected FLOPS of the current device.
         """
         tokens_sum = sum(batch_seqlens)
-        func = self.estimate_func.get(self.config.model_type, self._estimate_unknown_flops)
+        func = self.estimate_func.get(
+            self.config.model_type, self._estimate_unknown_flops
+        )
         estimated_flops = func(tokens_sum, batch_seqlens, delta_time)
         promised_flops = get_device_flops()
         return estimated_flops, promised_flops

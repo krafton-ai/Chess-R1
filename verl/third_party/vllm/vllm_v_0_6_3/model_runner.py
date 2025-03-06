@@ -113,20 +113,28 @@ class ModelRunner(ModelRunner):
             )
 
         self.model_memory_usage = m.consumed_memory
-        logger.info("Loading model weights took %.4f GB", self.model_memory_usage / float(2**30))
+        logger.info(
+            "Loading model weights took %.4f GB", self.model_memory_usage / float(2**30)
+        )
 
         if self.lora_config:
-            assert supports_lora(self.model), f"{self.model.__class__.__name__} does not support LoRA yet."
+            assert supports_lora(
+                self.model
+            ), f"{self.model.__class__.__name__} does not support LoRA yet."
 
             if supports_multimodal(self.model):
-                logger.warning("Regarding multimodal models, vLLM currently "
-                               "only supports adding LoRA to language model.")
+                logger.warning(
+                    "Regarding multimodal models, vLLM currently "
+                    "only supports adding LoRA to language model."
+                )
             # It's necessary to distinguish between the max_position_embeddings
             # of VLMs and LLMs.
             if hasattr(self.model.config, "max_position_embeddings"):
                 max_pos_embeddings = self.model.config.max_position_embeddings
             else:
-                max_pos_embeddings = self.model.config.text_config.max_position_embeddings
+                max_pos_embeddings = (
+                    self.model.config.text_config.max_position_embeddings
+                )
 
             self.lora_manager = LRUCacheWorkerLoRAManager(
                 self.scheduler_config.max_num_seqs,
@@ -147,7 +155,9 @@ class ModelRunner(ModelRunner):
                 self.device,
                 self.prompt_adapter_config,
             )
-            self.model = self.prompt_adapter_manager.create_prompt_adapter_manager(self.model)
+            self.model = self.prompt_adapter_manager.create_prompt_adapter_manager(
+                self.model
+            )
 
         if self.kv_cache_dtype == "fp8" and is_hip():
             # Currently only ROCm accepts kv-cache scaling factors
@@ -162,8 +172,13 @@ class ModelRunner(ModelRunner):
                         FutureWarning,
                         stacklevel=2,
                     )
-                    self.model.load_kv_cache_scales(self.model_config.quantization_param_path)
-                    logger.info("Loaded KV cache scaling factors from %s", self.model_config.quantization_param_path)
+                    self.model.load_kv_cache_scales(
+                        self.model_config.quantization_param_path
+                    )
+                    logger.info(
+                        "Loaded KV cache scaling factors from %s",
+                        self.model_config.quantization_param_path,
+                    )
                 else:
                     raise RuntimeError(
                         "Using FP8 KV cache and scaling factors provided but "
@@ -171,12 +186,21 @@ class ModelRunner(ModelRunner):
                         self.model.__class__,
                     )
             else:
-                logger.warning("Using FP8 KV cache but no scaling factors "
-                               "provided. Defaulting to scaling factors of 1.0. "
-                               "This may lead to less accurate results!")
+                logger.warning(
+                    "Using FP8 KV cache but no scaling factors "
+                    "provided. Defaulting to scaling factors of 1.0. "
+                    "This may lead to less accurate results!"
+                )
 
-        if envs.VLLM_TORCH_COMPILE_LEVEL == CompilationLevel.DYNAMO_AS_IS and supports_dynamo():
+        if (
+            envs.VLLM_TORCH_COMPILE_LEVEL == CompilationLevel.DYNAMO_AS_IS
+            and supports_dynamo()
+        ):
             from vllm.plugins import get_torch_compile_backend
 
             backend = get_torch_compile_backend() or "eager"
-            self.model = torch.compile(self.model, fullgraph=envs.VLLM_TEST_DYNAMO_FULLGRAPH_CAPTURE, backend=backend)
+            self.model = torch.compile(
+                self.model,
+                fullgraph=envs.VLLM_TEST_DYNAMO_FULLGRAPH_CAPTURE,
+                backend=backend,
+            )

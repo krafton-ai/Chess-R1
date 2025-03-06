@@ -14,7 +14,17 @@
 # Adapted from https://github.com/vllm-project/vllm/blob/main/vllm/entrypoints/llm.py
 
 from contextlib import contextmanager
-from typing import ClassVar, List, Optional, Sequence, Union, cast, overload, Dict, Tuple
+from typing import (
+    ClassVar,
+    List,
+    Optional,
+    Sequence,
+    Union,
+    cast,
+    overload,
+    Dict,
+    Tuple,
+)
 
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast
@@ -23,10 +33,13 @@ import torch.nn as nn
 from .arg_utils import EngineArgs
 from .llm_engine_sp import LLMEngine
 from vllm import LLM
-from vllm.inputs import (PromptInputs, TextPrompt, TokensPrompt, parse_and_batch_prompt)
+from vllm.inputs import PromptInputs, TextPrompt, TokensPrompt, parse_and_batch_prompt
 from vllm.logger import init_logger
 from vllm.lora.request import LoRARequest
-from vllm.model_executor.guided_decoding import (GuidedDecodingRequest, get_local_guided_decoding_logits_processor)
+from vllm.model_executor.guided_decoding import (
+    GuidedDecodingRequest,
+    get_local_guided_decoding_logits_processor,
+)
 from vllm.model_executor.guided_decoding.guided_fields import LLMGuidedOptions
 from vllm.outputs import EmbeddingRequestOutput, RequestOutput
 from vllm.pooling_params import PoolingParams
@@ -96,8 +109,10 @@ class LLM(LLM):
 
     def __init__(
         self,
-        model: Union[nn.Module, Dict], # model itself or its parameter dict
-        tokenizer: Union[PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer],
+        model: Union[nn.Module, Dict],  # model itself or its parameter dict
+        tokenizer: Union[
+            PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer
+        ],
         model_hf_config: PretrainedConfig,
         tokenizer_mode: str = "auto",
         trust_remote_code: bool = False,
@@ -115,7 +130,7 @@ class LLM(LLM):
         max_context_len_to_capture: Optional[int] = None,
         max_seq_len_to_capture: int = 8192,
         disable_custom_all_reduce: bool = False,
-        load_format = 'auto',
+        load_format="auto",
         **kwargs,
     ) -> None:
         if "disable_log_stats" not in kwargs:
@@ -139,13 +154,19 @@ class LLM(LLM):
             skip_tokenizer_init=skip_tokenizer_init,
             **kwargs,
         )
-        tokenizer_cls = (PreTrainedTokenizer, PreTrainedTokenizerFast, HybridEngineBaseTokenizer)
+        tokenizer_cls = (
+            PreTrainedTokenizer,
+            PreTrainedTokenizerFast,
+            HybridEngineBaseTokenizer,
+        )
         if not isinstance(tokenizer, tokenizer_cls):
             raise ValueError(
                 f"Unexpected tokenizer type: {type(tokenizer)}. Must be"
                 "one of the following: PreTrainedTokenizer, PreTrainedTokenizerFast, verl.workers.rollout.HybridEngineBaseTokenizer"
             )
-        self.llm_engine = LLMEngine.from_engine_args(model, tokenizer, engine_args)  # TODO: check usagecontext
+        self.llm_engine = LLMEngine.from_engine_args(
+            model, tokenizer, engine_args
+        )  # TODO: check usagecontext
         self.request_counter = Counter()
 
     def init_cache_engine(self):
@@ -163,7 +184,9 @@ class LLM(LLM):
     ) -> None:
         self.llm_engine.tokenizer = tokenizer
 
-    def _run_engine(self, *, use_tqdm: bool) -> List[Union[RequestOutput, EmbeddingRequestOutput]]:
+    def _run_engine(
+        self, *, use_tqdm: bool
+    ) -> List[Union[RequestOutput, EmbeddingRequestOutput]]:
         # Initialize tqdm.
         if use_tqdm:
             num_requests = self.llm_engine.get_num_unfinished_requests()
@@ -171,8 +194,9 @@ class LLM(LLM):
                 total=num_requests,
                 desc="Processed prompts",
                 dynamic_ncols=True,
-                postfix=(f"est. speed input: {0:.2f} toks/s, "
-                         f"output: {0:.2f} toks/s"),
+                postfix=(
+                    f"est. speed input: {0:.2f} toks/s, " f"output: {0:.2f} toks/s"
+                ),
             )
         # Run the engine.
         outputs: List[Union[RequestOutput, EmbeddingRequestOutput]] = []
@@ -188,10 +212,14 @@ class LLM(LLM):
                             # Calculate tokens only for RequestOutput
                             total_in_toks += len(output.prompt_token_ids)
                             in_spd = total_in_toks / pbar.format_dict["elapsed"]
-                            total_out_toks += sum(len(stp.token_ids) for stp in output.outputs)
+                            total_out_toks += sum(
+                                len(stp.token_ids) for stp in output.outputs
+                            )
                             out_spd = total_out_toks / pbar.format_dict["elapsed"]
-                            pbar.postfix = (f"est. speed input: {in_spd:.2f} toks/s, "
-                                            f"output: {out_spd:.2f} toks/s")
+                            pbar.postfix = (
+                                f"est. speed input: {in_spd:.2f} toks/s, "
+                                f"output: {out_spd:.2f} toks/s"
+                            )
                         pbar.update(1)
         if use_tqdm:
             pbar.close()
@@ -211,7 +239,9 @@ class LLM(LLM):
     #     return token_ids
 
     # NOTE(shengguangming): add for verl
-    def _post_process_outputs(self, request_outputs: List[RequestOutput]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _post_process_outputs(
+        self, request_outputs: List[RequestOutput]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         output_token_ids = []
         logprobs = []
         for request_output in request_outputs:  # List[RequestOutput]
@@ -226,14 +256,26 @@ class LLM(LLM):
                         logprob.append(logprobs_dict[id].logprob)
                     logprobs.append(torch.tensor(logprob))
 
-        pad_token_id = self.llm_engine.tokenizer.pad_token_id if self.llm_engine.tokenizer.pad_token_id is not None else self.llm_engine.tokenizer.eos_token_id
-        output_token_ids = pad_sequence(output_token_ids, batch_first=True, padding_value=pad_token_id)
+        pad_token_id = (
+            self.llm_engine.tokenizer.pad_token_id
+            if self.llm_engine.tokenizer.pad_token_id is not None
+            else self.llm_engine.tokenizer.eos_token_id
+        )
+        output_token_ids = pad_sequence(
+            output_token_ids, batch_first=True, padding_value=pad_token_id
+        )
         if len(logprobs) > 0:
-            logprobs = pad_sequence(logprobs, batch_first=True, padding_value=pad_token_id)
+            logprobs = pad_sequence(
+                logprobs, batch_first=True, padding_value=pad_token_id
+            )
         return output_token_ids, logprobs
 
-    def sync_model_weights(self, actor_weights: Dict[str, torch.Tensor], load_format: str) -> None:
-        self.llm_engine.sync_model_weights(actor_weights=actor_weights, load_format=load_format)
+    def sync_model_weights(
+        self, actor_weights: Dict[str, torch.Tensor], load_format: str
+    ) -> None:
+        self.llm_engine.sync_model_weights(
+            actor_weights=actor_weights, load_format=load_format
+        )
 
     def offload_model_weights(self) -> None:
         self.llm_engine.offload_model_weights()

@@ -39,8 +39,10 @@ class ParallelQwen2RMSNorm(nn.Module):
             sp_utils.mark_parameter_as_sequence_parallel(self.weight)
 
     def forward(self, hidden_states):
-        return fused_rms_norm_affine(input=hidden_states,
-                                     weight=self.weight,
-                                     normalized_shape=self.normalized_shape,
-                                     eps=self.variance_epsilon,
-                                     memory_efficient=True)
+        return fused_rms_norm_affine(
+            input=hidden_states,
+            weight=self.weight,
+            normalized_shape=self.normalized_shape,
+            eps=self.variance_epsilon,
+            memory_efficient=True,
+        )

@@ -24,6 +24,7 @@ from typing import List
 def is_megatron_core_available():
     try:
         from megatron.core import parallel_state as mpu
+
         return True
     except ImportError:
         return False
@@ -33,6 +34,7 @@ def is_megatron_core_available():
 def is_vllm_available():
     try:
         import vllm
+
         return True
     except ImportError:
         return False
@@ -44,5 +46,6 @@ def import_external_libs(external_libs=None):
     if not isinstance(external_libs, List):
         external_libs = [external_libs]
     import importlib
+
     for external_lib in external_libs:
         importlib.import_module(external_lib)

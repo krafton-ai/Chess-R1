@@ -22,6 +22,7 @@ class MegatronWorker(Worker):
 
     def get_megatron_global_info(self):
         from megatron.core import parallel_state as mpu
+
         tp_size = mpu.get_tensor_model_parallel_world_size()
         dp_size = mpu.get_data_parallel_world_size()
         pp_size = mpu.get_pipeline_model_parallel_world_size()
@@ -30,6 +31,7 @@ class MegatronWorker(Worker):
 
     def get_megatron_rank_info(self):
         from megatron.core import parallel_state as mpu
+
         tp_rank = mpu.get_tensor_model_parallel_rank()
         dp_rank = mpu.get_data_parallel_rank()
         pp_rank = mpu.get_pipeline_model_parallel_rank()

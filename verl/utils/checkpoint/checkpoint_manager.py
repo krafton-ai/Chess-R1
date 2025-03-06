@@ -39,9 +39,13 @@ class BaseCheckpointManager:
     - huggingface tokenizer and config for ckpt merge
     """
 
-    def __init__(self, model: FSDP, optimizer: torch.optim.Optimizer,
-                 lr_scheduler: torch.optim.lr_scheduler.LRScheduler, processing_class: Union[PreTrainedTokenizer,
-                                                                                             ProcessorMixin]):
+    def __init__(
+        self,
+        model: FSDP,
+        optimizer: torch.optim.Optimizer,
+        lr_scheduler: torch.optim.lr_scheduler.LRScheduler,
+        processing_class: Union[PreTrainedTokenizer, ProcessorMixin],
+    ):
         self.previous_global_step = None
         self.previous_save_local_path = None
 
@@ -65,7 +69,7 @@ class BaseCheckpointManager:
             return
 
         abs_path = os.path.abspath(self.previous_save_local_path)
-        print(f'Checkpoint manager remove previous save local path: {abs_path}')
+        print(f"Checkpoint manager remove previous save local path: {abs_path}")
         if not os.path.exists(abs_path):
             return
 
@@ -96,19 +100,19 @@ class BaseCheckpointManager:
     @staticmethod
     def get_rng_state():
         rng_state = {
-            'cpu': torch.get_rng_state(),
-            'cuda': torch.cuda.get_rng_state(),
-            'numpy': np.random.get_state(),
-            'random': random.getstate(),
+            "cpu": torch.get_rng_state(),
+            "cuda": torch.cuda.get_rng_state(),
+            "numpy": np.random.get_state(),
+            "random": random.getstate(),
         }
         return rng_state
 
     @staticmethod
     def load_rng_state(rng_state):
-        torch.set_rng_state(rng_state['cpu'])
-        torch.cuda.set_rng_state(rng_state['cuda'])
-        np.random.set_state(rng_state['numpy'])
-        random.setstate(rng_state['random'])
+        torch.set_rng_state(rng_state["cpu"])
+        torch.cuda.set_rng_state(rng_state["cuda"])
+        np.random.set_state(rng_state["numpy"])
+        random.setstate(rng_state["random"])
 
 
 def find_latest_ckpt_path(path, directory_format="global_step_{}"):

@@ -21,4 +21,5 @@ from .modeling_qwen2_megatron import (
     ParallelQwen2ForValueRmPad,
     # rmpad with megatron and pipeline parallelism
     ParallelQwen2ForCausalLMRmPadPP,
-    ParallelQwen2ForValueRmPadPP)
+    ParallelQwen2ForValueRmPadPP,
+)

@@ -19,4 +19,4 @@ from transformers import AutoTokenizer, LlamaConfig
 
 AutoTokenizer.register(LlamaConfig, CharTokenizer, exist_ok=True)
 
-__all__ = ['DigitCompletion', 'generate_ground_truth_response', 'CharTokenizer']
+__all__ = ["DigitCompletion", "generate_ground_truth_response", "CharTokenizer"]

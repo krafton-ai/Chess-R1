@@ -26,6 +26,7 @@ import argparse
 from random import randint, seed
 from tqdm import tqdm
 
+
 def gen_dataset(
     N,
     DIGIT,
@@ -37,19 +38,20 @@ def gen_dataset(
     for _ in tqdm(range(N)):
         # Helper function to generate a number with 50% chance of being N-digit or N/2-digit
         def get_random_num():
-            r = randint(,3)
+            r = randint(0, 3)
             if r == 0:
                 # 2 digits less than original
-                max_num = 10**(DIGIT-2)
-                return randint(0 if LESS_OR_EQUAL else max_num//10, max_num-1)
+                max_num = 10 ** (DIGIT - 2)
+                return randint(0 if LESS_OR_EQUAL else max_num // 10, max_num - 1)
             elif r == 1:
                 # 1 digit less than original
-                max_num = 10**(DIGIT-1)
-                return randint(0 if LESS_OR_EQUAL else max_num//10, max_num-1)
+                max_num = 10 ** (DIGIT - 1)
+                return randint(0 if LESS_OR_EQUAL else max_num // 10, max_num - 1)
             else:
                 # N-digit number
                 max_num = 10**DIGIT
-                return randint(0 if LESS_OR_EQUAL else max_num//10, max_num-1)
+                return randint(0 if LESS_OR_EQUAL else max_num // 10, max_num - 1)
+
         # Generate two numbers independently
         num1 = get_random_num()
         num2 = get_random_num()
@@ -57,29 +59,31 @@ def gen_dataset(
         result = num1 * num2
         equations.append((num1, num2, result))
     return equations
-    
-    
+
+
 def extract_solution(solution_str, *args):
     solution = re.search("#### (\\-?[0-9\\.\\,]+)", solution_str)
     assert solution is not None
     final_solution = solution.group(0)
-    final_solution = final_solution.split('#### ')[1].replace(',', '')
+    final_solution = final_solution.split("#### ")[1].replace(",", "")
     return final_solution
 
+
 def make_prefix(dp):
-    num1 = dp['num1']
-    num2 = dp['num2']
+    num1 = dp["num1"]
+    num2 = dp["num2"]
     prefix = f"""A conversation between User and Assistant. The user asks a question, and the Assistant solves it. The assistant first thinks about the reasoning process in the mind and then provides the user with the answer. The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> RESULT_NUMBER </answer>. User: Give me the answer of the following equation: {num1} * {num2} = Assistant: Ok let me think about it.\n<think>"""
     return prefix
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--local_dir', default='~/data/multiply-3_digit')
-    parser.add_argument('--hdfs_dir', default=None)
+    parser.add_argument("--local_dir", default="~/data/multiply-3_digit")
+    parser.add_argument("--hdfs_dir", default=None)
 
     args = parser.parse_args()
 
-    data_source = 'yolo/multiply-3_digit'
+    data_source = "yolo/multiply-3_digit"
     DIGIT = 3
     # N = 1000000
     N = 100000
@@ -93,33 +97,31 @@ if __name__ == '__main__':
     train_dataset = dataset[:TRAIN_SIZE]
     test_dataset = dataset[-TEST_SIZE:]
 
-
     # add a row to each data item that represents a unique id
     def make_map_fn(split):
 
         def process_fn(example, idx):
             question = make_prefix(example)
-            solution = example['result']
+            solution = example["result"]
             data = {
                 "data_source": data_source,
-                "prompt": [{
-                    "role": "user",
-                    "content": question,
-                }],
+                "prompt": [
+                    {
+                        "role": "user",
+                        "content": question,
+                    }
+                ],
                 "ability": "math",
-                "reward_model": {
-                    "style": "rule",
-                    "ground_truth": solution
-                },
+                "reward_model": {"style": "rule", "ground_truth": solution},
                 "extra_info": {
-                    'split': split,
-                    'index': idx,
-                }
+                    "split": split,
+                    "index": idx,
+                },
             }
             return data
 
         return process_fn
-    
+
     def to_dataset(dataset_list):
         dataset_dict = {
             "num1": [],
@@ -135,14 +137,14 @@ if __name__ == '__main__':
     train_dataset = to_dataset(train_dataset)
     test_dataset = to_dataset(test_dataset)
 
-    train_dataset = train_dataset.map(function=make_map_fn('train'), with_indices=True)
-    test_dataset = test_dataset.map(function=make_map_fn('test'), with_indices=True)
+    train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True)
+    test_dataset = test_dataset.map(function=make_map_fn("test"), with_indices=True)
 
     local_dir = args.local_dir
     hdfs_dir = args.hdfs_dir
 
-    train_dataset.to_parquet(os.path.join(local_dir, 'train.parquet'))
-    test_dataset.to_parquet(os.path.join(local_dir, 'test.parquet'))
+    train_dataset.to_parquet(os.path.join(local_dir, "train.parquet"))
+    test_dataset.to_parquet(os.path.join(local_dir, "test.parquet"))
 
     if hdfs_dir is not None:
         makedirs(hdfs_dir)

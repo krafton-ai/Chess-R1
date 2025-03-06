@@ -41,8 +41,8 @@ class ParallelLlamaMLP(nn.Module):
         row_kwargs = tp_utils.get_default_kwargs_for_row_parallel_linear()
 
         if megatron_config is not None:
-            assert column_kwargs.get('config', False), 'must have ModelParallelConfig'
-            assert row_kwargs.get('config', False), 'must have ModelParallelConfig'
+            assert column_kwargs.get("config", False), "must have ModelParallelConfig"
+            assert row_kwargs.get("config", False), "must have ModelParallelConfig"
             tp_utils.update_kwargs_with_config(row_kwargs, megatron_config)
             tp_utils.update_kwargs_with_config(column_kwargs, megatron_config)
 
@@ -59,12 +59,14 @@ class ParallelLlamaMLP(nn.Module):
         )
         self.gate_size = self.intermediate_size // tp_size
 
-        self.down_proj = tensor_parallel.RowParallelLinear(input_size=self.intermediate_size,
-                                                           output_size=self.hidden_size,
-                                                           bias=False,
-                                                           input_is_parallel=True,
-                                                           skip_bias_add=False,
-                                                           **row_kwargs)
+        self.down_proj = tensor_parallel.RowParallelLinear(
+            input_size=self.intermediate_size,
+            output_size=self.hidden_size,
+            bias=False,
+            input_is_parallel=True,
+            skip_bias_add=False,
+            **row_kwargs,
+        )
 
         self.act_fn = ACT2FN[config.hidden_act]
 

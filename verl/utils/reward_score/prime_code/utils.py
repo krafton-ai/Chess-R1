@@ -23,17 +23,19 @@ import os, sys
 
 
 def _temp_run(sample, generation, debug, result, metadata_list, timeout):
-    with open(os.devnull, 'w') as devnull:
+    with open(os.devnull, "w") as devnull:
         sys.stdout = devnull
         sys.stderr = devnull
         try:
-            res, metadata = run_test(in_outs=sample, test=generation, debug=debug, timeout=timeout)
+            res, metadata = run_test(
+                in_outs=sample, test=generation, debug=debug, timeout=timeout
+            )
             result.append(res)
             metadata_list.append(metadata)
         except Exception as e:
             # print(e) # some tracebacks are extremely long.
             traceback.print_exc(10)
-            result.append([-1 for i in range(len(sample['inputs']))])
+            result.append([-1 for i in range(len(sample["inputs"]))])
             metadata_list.append({})
 
 
@@ -45,7 +47,10 @@ def check_correctness(in_outs: Optional[dict], generation, timeout=10, debug=Tru
     manager = multiprocessing.Manager()
     result = manager.list()
     metadata_list = manager.list()
-    p = multiprocessing.Process(target=_temp_run, args=(in_outs, generation, debug, result, metadata_list, timeout))
+    p = multiprocessing.Process(
+        target=_temp_run,
+        args=(in_outs, generation, debug, result, metadata_list, timeout),
+    )
     p.start()
     p.join(timeout=timeout + 1)
     if p.is_alive():

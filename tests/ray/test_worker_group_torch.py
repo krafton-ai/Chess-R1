@@ -14,14 +14,18 @@
 
 import os
 
-os.environ['RAY_DEDUP_LOGS'] = '0'
-os.environ['NCCL_DEBUG'] = 'WARN'
+os.environ["RAY_DEDUP_LOGS"] = "0"
+os.environ["NCCL_DEBUG"] = "WARN"
 
 import torch
 import torch.distributed
 import ray
 
-from verl.single_controller.ray.base import RayResourcePool, RayClassWithInitArgs, RayWorkerGroup
+from verl.single_controller.ray.base import (
+    RayResourcePool,
+    RayClassWithInitArgs,
+    RayWorkerGroup,
+)
 from verl.single_controller.base.worker import Worker
 
 
@@ -34,14 +38,16 @@ class TestAllGatherActor(Worker):
 
     def init(self):
         torch.distributed.init_process_group()
-        self.tensor = torch.zeros(size=(self.size,), dtype=torch.int64, device='cuda')
+        self.tensor = torch.zeros(size=(self.size,), dtype=torch.int64, device="cuda")
         self.tensor += self.rank
 
     def all_gather(self):
         world_size = self._world_size
-        output = torch.zeros(size=(self.tensor.shape[0] * world_size,),
-                             dtype=self.tensor.dtype,
-                             device=self.tensor.device)
+        output = torch.zeros(
+            size=(self.tensor.shape[0] * world_size,),
+            dtype=self.tensor.dtype,
+            device=self.tensor.device,
+        )
         torch.distributed.all_gather_into_tensor(output, self.tensor, async_op=False)
         return output
 
@@ -54,14 +60,16 @@ class TestAllGatherActorV2(Worker):
         self.size = size
 
         torch.distributed.init_process_group()
-        self.tensor = torch.zeros(size=(self.size,), dtype=torch.int64, device='cuda')
+        self.tensor = torch.zeros(size=(self.size,), dtype=torch.int64, device="cuda")
         self.tensor += self.rank
 
     def all_gather(self):
         world_size = self._world_size
-        output = torch.zeros(size=(self.tensor.shape[0] * world_size,),
-                             dtype=self.tensor.dtype,
-                             device=self.tensor.device)
+        output = torch.zeros(
+            size=(self.tensor.shape[0] * world_size,),
+            dtype=self.tensor.dtype,
+            device=self.tensor.device,
+        )
         torch.distributed.all_gather_into_tensor(output, self.tensor, async_op=False)
         return output
 
@@ -76,16 +84,20 @@ def test_all_gather_torch():
     resource_pool = RayResourcePool([4], use_gpu=True)
     class_with_args = RayClassWithInitArgs(cls=TestAllGatherActor, size=2)
 
-    worker_group = RayWorkerGroup(resource_pool, class_with_args, name_prefix="worker_group_torch")
+    worker_group = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="worker_group_torch"
+    )
 
-    worker_group.execute_all_sync('init')
-    output = worker_group.execute_all_sync('all_gather')
+    worker_group.execute_all_sync("init")
+    output = worker_group.execute_all_sync("all_gather")
     for i in range(1, len(output)):
         assert torch.all(output[i] == output[0])
 
     output = output[0].cpu()
     print(output)
-    assert torch.all(output == torch.tensor([0, 0, 1, 1, 2, 2, 3, 3], dtype=torch.int64))
+    assert torch.all(
+        output == torch.tensor([0, 0, 1, 1, 2, 2, 3, 3], dtype=torch.int64)
+    )
 
     ray.shutdown()
 
@@ -100,14 +112,18 @@ def test_all_gather_torch_v2():
     resource_pool = RayResourcePool([4], use_gpu=True)
     class_with_args = RayClassWithInitArgs(cls=TestAllGatherActorV2, size=2)
 
-    worker_group = RayWorkerGroup(resource_pool, class_with_args, name_prefix="worker_group_torch")
+    worker_group = RayWorkerGroup(
+        resource_pool, class_with_args, name_prefix="worker_group_torch"
+    )
 
-    output = worker_group.execute_all_sync('all_gather')
+    output = worker_group.execute_all_sync("all_gather")
     for i in range(1, len(output)):
         assert torch.all(output[i] == output[0])
 
     output = output[0].cpu()
     print(output)
-    assert torch.all(output == torch.tensor([0, 0, 1, 1, 2, 2, 3, 3], dtype=torch.int64))
+    assert torch.all(
+        output == torch.tensor([0, 0, 1, 1, 2, 2, 3, 3], dtype=torch.int64)
+    )
 
     ray.shutdown()
