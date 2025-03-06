@@ -1,0 +1,4 @@
+
+Running eval: MATH500 with command ['python', 'inference_and_check.py', '--model', 'Qwen/Qwen2.5-1.5B-Instruct', '--dataset', 'MATH500', '--split', 'test', '--inference_backend', 'huggingface', '--tp', '4', '--temperatures', '0.7']
+python: can't open file '/home/jovyan/chess_llm/inference_and_check.py': [Errno 2] No such file or directory
+Error occurred while running eval MATH500: Command '['python', 'inference_and_check.py', '--model', 'Qwen/Qwen2.5-1.5B-Instruct', '--dataset', 'MATH500', '--split', 'test', '--inference_backend', 'huggingface', '--tp', '4', '--temperatures', '0.7']' returned non-zero exit status 2.

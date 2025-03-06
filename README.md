@@ -27,7 +27,7 @@ pip install tensorboard
 sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/chess/lib/python3.10/site-packages/tensorboard/plugins/core/core_plugin.py
 
 # utilities
-pip install wandb IPython matplotlib
+pip install -r requirements.txt
 conda install tmux
 ```
 
@@ -42,18 +42,15 @@ python ./examples/data_preprocess/countdown.py
 
 ### Run Training
 
-#### Single GPU (<3B GPU)
-
-Works for model <= 1.5B. For Qwen2.5-0.5B base, we know it fails to learn reasoning.
 ```
-bash ./scripts/train_tiny_zero.sh
+bash scripts/test.sh
 ```
 
-#### Multi GPU (<3B GPU)
+### Run Evaluation
 
-In this case, the base model is able to develop sophisticated reasoning skills.
 ```
-bash scripts/exps/train_tiny_zero_grpo_qwen7b_instruct.sh
+cd verl/evaluation
+python eval.py --model Qwen/Qwen2.5-1.5B-Instruct --evals=MATH500 --tp=4 --output_file=results.txt --temperatures 0.7 
 ```
 
 ## Acknowledge
