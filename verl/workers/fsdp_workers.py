@@ -150,7 +150,6 @@ class ActorRolloutRefWorker(Worker):
                 "optimizer_offload", False
             )
         elif self._is_ref:
-            # TODO: it seems that manual offload is slowly than FSDP offload
             self._is_offload_param = self.config.ref.fsdp_config.get(
                 "param_offload", False
             )

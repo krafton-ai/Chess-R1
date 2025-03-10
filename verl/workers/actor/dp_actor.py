@@ -304,39 +304,46 @@ class DataParallelPPOActor(BasePPOActor):
         batch = data.select(batch_keys=select_keys).batch
         has_multi_modal_inputs = "multi_modal_inputs" in data.non_tensor_batch.keys()
 
+        if hasattr(self.config, "ppo_mini_batch_size"):
+            mini_batch_size = self.config.ppo_mini_batch_size
+            epochs = self.config.ppo_epochs
+            micro_batch_size_per_gpu = self.config.ppo_micro_batch_size_per_gpu
+            max_token_len = self.config.ppo_max_token_len_per_gpu
+        else:
+            mini_batch_size = self.config.mini_batch_size
+            epochs = self.config.epochs
+            micro_batch_size_per_gpu = self.config.micro_batch_size_per_gpu
+            max_token_len = self.config.max_token_len_per_gpu
+
         # Split to make minibatch iterator for updating the actor
         # See PPO paper for details. https://arxiv.org/abs/1707.06347
         if has_multi_modal_inputs:
-            num_mini_batches = (
-                data.batch.batch_size[0] // self.config.ppo_mini_batch_size
-            )
+            num_mini_batches = data.batch.batch_size[0] // mini_batch_size
             non_tensor_select_keys = ["multi_modal_inputs"]
             dataloader = data.select(select_keys, non_tensor_select_keys).chunk(
                 num_mini_batches
             )
         else:
-            dataloader = batch.split(self.config.ppo_mini_batch_size)
+            dataloader = batch.split(mini_batch_size)
 
         metrics = {}
-        for epoch in range(self.config.ppo_epochs):
+        for epoch in range(epochs):
             for batch_idx, data in enumerate(dataloader):
                 # split batch into micro_batches
                 mini_batch = data
                 if has_multi_modal_inputs:
                     self.gradient_accumulation = (
-                        self.config.ppo_mini_batch_size
-                        // self.config.ppo_micro_batch_size_per_gpu
+                        mini_batch_size // micro_batch_size_per_gpu
                     )
                     num_micro_batches = (
-                        mini_batch.batch.batch_size[0]
-                        // self.config.ppo_micro_batch_size_per_gpu
+                        mini_batch.batch.batch_size[0] // micro_batch_size_per_gpu
                     )
                     micro_batches = data.select(
                         select_keys, non_tensor_select_keys
                     ).chunk(num_micro_batches)
                 elif self.config.use_dynamic_bsz:
                     max_token_len = (
-                        self.config.ppo_max_token_len_per_gpu
+                        self.config.max_token_len_per_gpu
                         * self.ulysses_sequence_parallel_size
                     )
                     micro_batches, _ = rearrange_micro_batches(
@@ -344,13 +351,10 @@ class DataParallelPPOActor(BasePPOActor):
                     )
                 else:
                     self.gradient_accumulation = (
-                        self.config.ppo_mini_batch_size
-                        // self.config.ppo_micro_batch_size_per_gpu
+                        mini_batch_size // micro_batch_size_per_gpu
                     )
                     # split batch into micro_batches
-                    micro_batches = mini_batch.split(
-                        self.config.ppo_micro_batch_size_per_gpu
-                    )
+                    micro_batches = mini_batch.split(micro_batch_size_per_gpu)
 
                 self.actor_optimizer.zero_grad()
 
@@ -404,9 +408,7 @@ class DataParallelPPOActor(BasePPOActor):
 
                     if self.config.use_dynamic_bsz:
                         # relative to the dynamic bsz
-                        loss = policy_loss * (
-                            len(data) / self.config.ppo_mini_batch_size
-                        )
+                        loss = policy_loss * (len(data) / mini_batch_size)
                     else:
                         loss = policy_loss / self.gradient_accumulation
                     loss.backward()

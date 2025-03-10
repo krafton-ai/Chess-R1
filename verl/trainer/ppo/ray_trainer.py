@@ -389,7 +389,6 @@ class RayPPOTrainer(object):
 
         self.hybrid_engine = config.actor_rollout_ref.hybrid_engine
         assert self.hybrid_engine, "Currently, only support hybrid engine"
-
         if self.hybrid_engine:
             assert (
                 Role.ActorRollout in role_worker_mapping

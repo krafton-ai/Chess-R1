@@ -5,27 +5,53 @@ import json
 
 # Define eval to split mapping
 eval_to_split = {
-  "MATH500": "test", 
-  "AIME": "train", 
-  "GPQADiamond": "train", 
-  "MMLU": "test",
-  "MMLUPro": "test",
-  "LiveCodeBench": "test",
-  "GSM8K": "test",
-  "ARC-C": "test",
+    "MATH500": "test",
+    "AIME": "train",
+    "GPQADiamond": "train",
+    "MMLU": "test",
+    "MMLUPro": "test",
+    "LiveCodeBench": "test",
+    "GSM8K": "test",
+    "ARC-C": "test",
 }
 
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Process model path, prompt format, and evals to run.")
+    parser = argparse.ArgumentParser(
+        description="Process model path, prompt format, and evals to run."
+    )
     parser.add_argument("--model", required=True, type=str, help="Path to the model.")
-    parser.add_argument("--evals", required=True, type=str, help="Comma-separated list of evals to run (no spaces).")
+    parser.add_argument(
+        "--evals",
+        required=True,
+        type=str,
+        help="Comma-separated list of evals to run (no spaces).",
+    )
     parser.add_argument("--tp", type=int, default=8, help="Tensor Parallelism Degree")
-    parser.add_argument("--filter-difficulty", action="store_true", help="Filter difficulty.")
+    parser.add_argument(
+        "--filter-difficulty", action="store_true", help="Filter difficulty."
+    )
     parser.add_argument("--source", type=str, help="Source for the dataset.")
-    parser.add_argument("--output_file", required=True, type=str, help="Output file to write results to.")
-    parser.add_argument("--temperatures", type=float, nargs="+", default=[0], help="Temperature for sampling.")
-    parser.add_argument("--visible_devices", type=str, help="Comma-separated list of CUDA devices to use (e.g. '0,1,2')")
+    parser.add_argument(
+        "--output_file",
+        required=True,
+        type=str,
+        help="Output file to write results to.",
+    )
+    parser.add_argument(
+        "--temperatures",
+        type=float,
+        nargs="+",
+        default=[0],
+        help="Temperature for sampling.",
+    )
+    parser.add_argument(
+        "--visible_devices",
+        type=str,
+        help="Comma-separated list of CUDA devices to use (e.g. '0,1,2')",
+    )
     return parser.parse_args()
+
 
 def extract_accuracy_from_output(output):
     # Iterate through all lines from the end to the beginning
@@ -37,8 +63,9 @@ def extract_accuracy_from_output(output):
             if "acc" in data:
                 return data["acc"]
         except json.JSONDecodeError:
-            continue 
+            continue
     return None
+
 
 def write_logs_to_file(logs, output_file):
     try:
@@ -47,6 +74,7 @@ def write_logs_to_file(logs, output_file):
         print(f"Logs successfully written to {output_file}")
     except IOError as e:
         print(f"Failed to write logs to file {output_file}: {e}")
+
 
 def main():
     args = parse_arguments()
@@ -60,30 +88,40 @@ def main():
 
     script_path = "inference_and_check.py"
 
-    # Hold all logs 
+    # Hold all logs
     all_logs = ""
     results = {}
-        
+
     # Set up environment with CUDA_VISIBLE_DEVICES if specified
-    popen_kwargs = {'stdout': subprocess.PIPE, 'stderr': subprocess.STDOUT, 'text': True}
+    popen_kwargs = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+        "text": True,
+    }
     if args.visible_devices:
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = args.visible_devices
-        popen_kwargs['env'] = env
-        
+        popen_kwargs["env"] = env
+
     # Run the Python command for each eval and collect logs
     for eval_name in evals:
         command = [
-            "python", script_path, 
-            "--model", model_path, 
-            "--dataset", eval_name, 
-            "--split", eval_to_split[eval_name], 
-            "--inference_backend", "huggingface",
-            "--tp", str(tp),
-            "--temperatures"
+            "python",
+            script_path,
+            "--model",
+            model_path,
+            "--dataset",
+            eval_name,
+            "--split",
+            eval_to_split[eval_name],
+            "--inference_backend",
+            "huggingface",
+            "--tp",
+            str(tp),
+            "--temperatures",
         ]
         command.extend(temperatures)  # Add temperatures as separate arguments
-            
+
         if args.filter_difficulty:
             assert args.source != "", "No source passed for filtering difficulty."
             command.append("--filter-difficulty")
@@ -117,6 +155,7 @@ def main():
 
     print("Results:")
     print(results)
+
 
 if __name__ == "__main__":
     main()

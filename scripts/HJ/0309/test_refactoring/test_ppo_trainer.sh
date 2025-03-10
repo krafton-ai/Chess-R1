@@ -7,8 +7,8 @@ export ROLLOUT_TP_SIZE=$N_GPUS
 export VLLM_ATTENTION_BACKEND=XFORMERS
 
 export USER_NAME=HJ
-export GROUP_NAME=test
-export EXPERIMENT_NAME=test_exp
+export GROUP_NAME=0309_test_refactoring
+export EXPERIMENT_NAME=ppo_trainer
 
 
 python3 -m verl.trainer.main_ppo \
@@ -18,14 +18,14 @@ trainer.experiment_name=$EXPERIMENT_NAME \
 algorithm.adv_estimator=grpo \
 data.train_files=$DATA_DIR/train.parquet \
 data.val_files=$DATA_DIR/test.parquet \
-data.train_batch_size=16 \
+data.train_batch_size=32 \
 data.val_batch_size=1312 \
 data.max_prompt_length=256 \
 data.max_response_length=1024 \
 actor_rollout_ref.model.path=$BASE_MODEL \
 actor_rollout_ref.model.use_remove_padding=True \
 actor_rollout_ref.actor.optim.lr=1e-6 \
-actor_rollout_ref.actor.ppo_mini_batch_size=16 \
+actor_rollout_ref.actor.ppo_mini_batch_size=32 \
 actor_rollout_ref.actor.ppo_micro_batch_size=4 \
 actor_rollout_ref.actor.use_kl_loss=True \
 actor_rollout_ref.actor.kl_loss_coef=0.001 \
@@ -48,5 +48,5 @@ trainer.default_hdfs_dir=null \
 trainer.n_gpus_per_node=$N_GPUS \
 trainer.nnodes=1 \
 trainer.save_freq=-1 \
-trainer.test_freq=10 \
+trainer.test_freq=100 \
 trainer.total_epochs=15 2>&1 | tee verl_demo.log

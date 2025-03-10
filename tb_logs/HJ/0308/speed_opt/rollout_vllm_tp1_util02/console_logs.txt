@@ -1,0 +1,29 @@
+[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/speed_opt/rollout_vllm_tp1_util02/latest_checkpointed_iteration.txt
+[stdout] Training from scratch
+[stdout] validation generation end
+[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.07226562594587449}"
+[stdout] epoch 0, step 1
+[stdout] epoch 0, step 2
+[stdout] epoch 0, step 3
+[stdout] epoch 0, step 4
+[stdout] epoch 0, step 5
+[stdout] epoch 0, step 6
+[stdout] epoch 0, step 7
+[stdout] epoch 0, step 8
+[stdout] epoch 0, step 9
+[stdout] epoch 0, step 10
+[stdout] epoch 0, step 11
+[stdout] epoch 0, step 12
+[stdout] epoch 0, step 13
+[stdout] epoch 0, step 14
+[stdout] epoch 0, step 15
+[stdout] epoch 0, step 16
+[stdout] epoch 0, step 17
+[stdout] epoch 0, step 18
+[stdout] epoch 0, step 19
+[stdout] epoch 0, step 20
+[stdout] epoch 0, step 21
+[stdout] epoch 0, step 22
+[stdout] epoch 0, step 23
+[stdout] epoch 0, step 24
+[stdout] epoch 0, step 25
