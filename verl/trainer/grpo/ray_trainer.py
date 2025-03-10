@@ -20,6 +20,7 @@ import os
 import uuid
 import numpy as np
 import torch
+from tqdm import tqdm
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
@@ -41,7 +42,7 @@ from verl.single_controller.ray import (
     RayClassWithInitArgs,
 )
 from verl.single_controller.ray.base import create_colocated_worker_cls
-from verl.trainer.ppo import core_algos
+from verl.trainer.grpo import core_algos
 from verl.utils.seqlen_balancing import (
     get_seqlen_balanced_partitions,
     log_seqlen_unbalance,
@@ -311,9 +312,8 @@ class RayGRPOTrainer(object):
         print(f"Size of train dataloader: {len(self.train_dataloader)}")
 
         # inject total_training_steps to optim_config. This is hacky.
-        self.total_training_steps = (
-            len(self.train_dataloader) * self.config.trainer.total_epochs
-        )
+        self.total_training_steps = self.config.trainer.total_training_steps
+        self.total_training_steps
         print(f"Total training steps: {self.total_training_steps}")
 
         OmegaConf.set_struct(self.config, True)
@@ -602,10 +602,22 @@ class RayGRPOTrainer(object):
         logger.log(data=val_metrics, step=self.global_steps)
         self.global_steps += 1
 
-        # start training
-        for epoch in range(self.config.trainer.total_epochs):
-            for batch_dict in self.train_dataloader:
-                print(f"epoch {epoch}, step {self.global_steps}")
+        # Create iterator for dataloader to manage iteration manually
+        dataloader_iter = iter(self.train_dataloader)
+
+        # Start training with tqdm progress bar
+        with tqdm(total=self.total_training_steps, desc="Training", unit="step") as pbar:
+            # While loop based on steps instead of nested epoch/batch loops
+            while self.global_steps < self.total_training_steps:
+                # Get next batch with handling for dataloader exhaustion
+                try:
+                    batch_dict = next(dataloader_iter)
+                except StopIteration:
+                    # Reinitialize the dataloader iterator when it's exhausted
+                    dataloader_iter = iter(self.train_dataloader)
+                    batch_dict = next(dataloader_iter)
+                print(f"step {self.global_steps}")
+
                 metrics = {}
                 timing_raw = {}
 
@@ -726,18 +738,17 @@ class RayGRPOTrainer(object):
                 logger.log(data=metrics, step=self.global_steps)
 
                 self.global_steps += 1
+                pbar.update(1)
 
-                if self.global_steps >= self.total_training_steps:
-
-                    # perform validation after training
-                    if self.val_reward_fn is not None:
-                        val_metrics = self._validate()
-                        pprint(f"Final validation metrics: {val_metrics}")
-                        logger.log(data=val_metrics, step=self.global_steps)
-                    if (
-                        self.config.trainer.save_freq > 0
-                        and (self.global_steps - 1) % self.config.trainer.save_freq != 0
-                    ):
-                        with _timer("save_checkpoint", timing_raw):
-                            self._save_checkpoint()
-                    return
+        # perform validation after training
+        if self.val_reward_fn is not None:
+            val_metrics = self._validate()
+            pprint(f"Final validation metrics: {val_metrics}")
+            logger.log(data=val_metrics, step=self.global_steps)
+        if (
+            self.config.trainer.save_freq > 0
+            and (self.global_steps - 1) % self.config.trainer.save_freq != 0
+        ):
+            with _timer("save_checkpoint", timing_raw):
+                self._save_checkpoint()
+        return

@@ -3,7 +3,6 @@ hydra:
     dir: tb_logs/${trainer.user_name}/${now:%m%d}/${trainer.group_name}/${trainer.experiment_name}
 
 trainer:
-  total_epochs: 30
   total_training_steps: null # Set this to not be constrained by the number of epochs!!!
   user_name: test
   group_name: test

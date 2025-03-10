@@ -146,7 +146,7 @@ class FSDPVLLMShardingManager(BaseShardingManager):
         self.module.train()
 
         # add empty cache after each compute
-        # torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
         # restore random states
         if self.device_mesh is not None:
