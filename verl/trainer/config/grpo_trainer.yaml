@@ -4,6 +4,7 @@ hydra:
 
 trainer:
   total_epochs: 30
+  total_training_steps: null # Set this to not be constrained by the number of epochs!!!
   user_name: test
   group_name: test
   experiment_name: test

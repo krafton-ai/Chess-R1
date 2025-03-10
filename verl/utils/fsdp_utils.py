@@ -152,6 +152,8 @@ def offload_fsdp_model_to_cpu(model: FSDP, empty_cache: bool = True):
         torch.cuda.empty_cache()
 
 
+#TODO: (dy) Check if this isn't causing any troubles....
+#      I think it should be like the code below, but not sure for now so lets leave it as it is
 @torch.no_grad()
 def load_fsdp_model_to_gpu(model: FSDP):
     assert isinstance(model, FSDP)
@@ -166,6 +168,23 @@ def load_fsdp_model_to_gpu(model: FSDP):
         handle.flat_param_to(torch.device(f"cuda:{device_id}"), non_blocking=True)
         # the following still keeps id(._local_shard) != id(.data)
         flat_param._local_shard = flat_param.data
+
+#TODO: (dy) Check if this isn't causing any troubles....
+#      I think it should be like the code below, but not sure for now so lets leave it as it is
+# @torch.no_grad()
+# def load_fsdp_model_to_gpu(model: FSDP):
+#     assert isinstance(model, FSDP)
+#     # lazy init FSDP model
+#     _lazy_init(model, model)
+#     assert model._is_root, f"Only support root model loading to GPU"
+#     device_id = torch.cuda.current_device()
+#     for handle in model._all_handles:
+#         flat_param = handle.flat_param
+#         # Only move parameters to GPU if they are offloaded
+#         if handle._offload_params:
+#             handle.flat_param_to(torch.device(f"cuda:{device_id}"), non_blocking=True)
+#             # Update the local shard reference
+#             flat_param._local_shard = flat_param.data
 
 
 @torch.no_grad()

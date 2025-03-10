@@ -35,9 +35,15 @@ conda install tmux
 
 **Data Preparation**
 ```
+# For Base models
 source ~/.bashrc
 conda activate chess
 python ./examples/data_preprocess/countdown.py
+
+# For Instruct models
+source ~/.bashrc
+conda activate chess
+python ./examples/data_preprocess/countdown.py --template qwen-instruct
 ```
 
 ### Run Training

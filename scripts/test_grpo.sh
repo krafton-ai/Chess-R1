@@ -7,12 +7,12 @@ export ROLLOUT_TP_SIZE=$N_GPUS  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 
 # Define model and dataset
-export BASE_MODEL="Qwen/Qwen2.5-7B"
-export DATA_DIR="data/countdown"
+export BASE_MODEL="Qwen/Qwen2.5-7B-Instruct"
+export DATA_DIR="data/countdown-instruct"
 
 # Experiment metadata
-export USER_NAME="HJ"
-export GROUP_NAME="0309_test_refactoring"
+export USER_NAME="DY"
+export GROUP_NAME="test_refactoring_gamma"
 export EXPERIMENT_NAME="grpo_trainer"
 
 
@@ -25,7 +25,7 @@ trainer_args=" \
     trainer.nnodes=1 \
     trainer.save_freq=-1 \
     trainer.test_freq=100 \
-    trainer.total_epochs=15 \
+    trainer.total_training_steps=200 \
 "
 
 # batch_size: data.train_batch_size * actor.num_response
@@ -68,7 +68,7 @@ reference_args=" \
 "
 
 algorithm_args=" \
-    algorithm.kl_coef=0.001 \
+    algorithm.gamma=0.995 \
 "
 
 ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"

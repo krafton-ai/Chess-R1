@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import ray
 import hydra
 from verl.trainer.grpo.ray_trainer import RayGRPOTrainer
@@ -27,8 +28,15 @@ def run_grpo(config, compute_score=None):
         # this is for local ray cluster
         ray.init(
             runtime_env={
-                "env_vars": {"TOKENIZERS_PARALLELISM": "true", "NCCL_DEBUG": "WARN"}
-            },
+                "env_vars": {
+                    "TOKENIZERS_PARALLELISM": "true", 
+                    "NCCL_DEBUG": "WARN",
+                    # Make sure VLLM_ATTENTION_BACKEND is set in the Ray runtime environment
+                    "VLLM_ATTENTION_BACKEND": os.environ.get("VLLM_ATTENTION_BACKEND", "XFORMERS"),
+                    # Set to "1" to allow debugging
+                    # "RAY_DEBUG": "1"
+                }
+            }
         )
     ray.get(main_task.remote(config, compute_score))
 

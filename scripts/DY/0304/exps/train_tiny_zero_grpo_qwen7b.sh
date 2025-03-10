@@ -1,5 +1,5 @@
 export N_GPUS=4
-export CUDA_VISIBLE_DEVICES=0,1,2,3
+export CUDA_VISIBLE_DEVICES=0,1,2,3,2,3
 ray stop --force && ray start --head --include-dashboard=True
 export BASE_MODEL="Qwen/Qwen2.5-7B"
 export DATA_DIR="data/countdown"

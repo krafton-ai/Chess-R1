@@ -21,6 +21,7 @@ implement PPO
 import numpy as np
 import torch
 from collections import defaultdict
+from copy import deepcopy
 
 import verl.utils.torch_functional as verl_F
 
@@ -121,6 +122,7 @@ def compute_grpo_outcome_advantage(
     token_level_rewards: torch.Tensor,
     eos_mask: torch.Tensor,
     index: torch.Tensor,
+    gamma: torch.Tensor,
     epsilon: float = 1e-6,
 ):
     """
@@ -131,6 +133,8 @@ def compute_grpo_outcome_advantage(
             shape: (bs, response_length)
         eos_mask: `(torch.Tensor)`
             shape: (bs, response_length)
+        gamma: `(float)`
+            discounted factor used in RL
 
     Returns:
         advantages: `(torch.Tensor)`
@@ -138,16 +142,22 @@ def compute_grpo_outcome_advantage(
         Returns: `(torch.Tensor)`
             shape: (bs, response_length)
     """
-    response_length = token_level_rewards.shape[-1]
-    scores = token_level_rewards.sum(dim=-1)
-
     id2score = defaultdict(list)
     id2mean = {}
     id2std = {}
 
     with torch.no_grad():
+        response_length = token_level_rewards.shape[-1]
+        # Add discount factor
+        for t in range(response_length):
+            token_level_rewards[:, t] = token_level_rewards[:, t] * (gamma ** t) * eos_mask[:, t]
+
+        scores = token_level_rewards.sum(dim=-1)
+        returns = scores.unsqueeze(-1).tile([1, response_length]) * eos_mask
+
         bsz = scores.shape[0]
         for i in range(bsz):
+            # map to uid to ensure they are from the same rollouts
             id2score[index[i]].append(scores[i])
         for idx in id2score:
             if len(id2score[idx]) == 1:
@@ -162,7 +172,7 @@ def compute_grpo_outcome_advantage(
             scores[i] = (scores[i] - id2mean[index[i]]) / (id2std[index[i]] + epsilon)
         scores = scores.unsqueeze(-1).tile([1, response_length]) * eos_mask
 
-    return scores, scores
+    return scores, returns
 
 
 def compute_rloo_outcome_advantage(
@@ -319,14 +329,17 @@ def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange)
     """
     negative_approx_kl = log_prob - old_log_prob
     ratio = torch.exp(negative_approx_kl)
+    ppo_ratio = verl_F.masked_mean(ratio, eos_mask)
+    # Measures backward KL : -negative_approx_kl = old_log_prob - log_prob
     ppo_kl = verl_F.masked_mean(-negative_approx_kl, eos_mask)
 
     pg_losses = -advantages * ratio
     pg_losses2 = -advantages * torch.clamp(ratio, 1.0 - cliprange, 1.0 + cliprange)
 
     pg_loss = verl_F.masked_mean(torch.max(pg_losses, pg_losses2), eos_mask)
+    # torch.gt : greater than
     pg_clipfrac = verl_F.masked_mean(torch.gt(pg_losses2, pg_losses).float(), eos_mask)
-    return pg_loss, pg_clipfrac, ppo_kl
+    return pg_loss, pg_clipfrac, ppo_kl, ppo_ratio
 
 
 def compute_entropy_loss(logits, eos_mask):
@@ -402,7 +415,8 @@ def kl_penalty(
         return 0.5 * (logprob - ref_logprob).square()
 
     # J. Schulman. Approximating kl divergence, 2020.
-    # # URL http://joschu.net/blog/kl-approx.html.
+    # URL http://joschu.net/blog/kl-approx.html.
+    # URL https://github.com/huggingface/trl/blob/main/trl/trainer/grpo_trainer.py#L943
     if kl_penalty == "low_var_kl":
         kl = ref_logprob - logprob
         ratio = torch.exp(kl)

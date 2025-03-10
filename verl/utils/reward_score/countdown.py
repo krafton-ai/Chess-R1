@@ -85,7 +85,10 @@ def compute_score(
         if do_print:
             print(f"No equation found")
         return 0
-
+    
+    # (dy) This is a bit odd... I'm giving plus rewards for being invalid...?
+    #      Well, you are matching the format and just it ...
+    #      Okay, so the authors are giving not format + correctness but 0 / format / correctness
     # Validate equation uses correct numbers
     if not validate_equation(equation, numbers):
         if do_print:

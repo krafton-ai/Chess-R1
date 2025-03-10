@@ -24,6 +24,7 @@ actor_rollout_ref:
     override_config: { }
     enable_gradient_checkpointing: True
     use_remove_padding: False
+    use_liger: False # A triton-based efficient LLM kernel
   actor:
     strategy: fsdp  # This is for backward-compatibility
     ppo_mini_batch_size: 256
@@ -161,7 +162,7 @@ algorithm:
 
 trainer:
   total_epochs: 30
-  total_training_steps: null
+  total_training_steps: null # Set this to not be constrained by the number of epochs!!!
   user_name: DY # [DY, HJ, JH]
   group_name: test
   experiment_name: test
@@ -174,7 +175,7 @@ trainer:
   resume_mode: auto # or auto or resume_path if 
   resume_from_path: False
   test_freq: -1
-  critic_warmup: 0
+  critic_warmup: 0 # This is not implemented!! Don't use
   default_hdfs_dir: null
   remove_previous_ckpt_in_save: False
   del_local_ckpt_after_load: False

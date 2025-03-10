@@ -35,6 +35,14 @@ def compute_data_metrics(batch):
     prompt_length = response_info["prompt_length"]
     response_length = response_info["response_length"]
 
+    success_traj_idx = sequence_score == 1.0
+    success_response_length = response_length[success_traj_idx]
+    if len(success_response_length) == 0 :
+        success_response_length = torch.tensor([0.0]) # no success
+    failure_response_length = response_length[~success_traj_idx]
+    if len(failure_response_length) == 0:
+        failure_response_length = torch.tensor([0.0]) # no failure
+
     valid_adv = torch.masked_select(advantages, response_mask)
     valid_returns = torch.masked_select(returns, response_mask)
 
@@ -43,6 +51,7 @@ def compute_data_metrics(batch):
         "critic/score/mean": torch.mean(sequence_score).detach().item(),
         "critic/score/max": torch.max(sequence_score).detach().item(),
         "critic/score/min": torch.min(sequence_score).detach().item(),
+        "critic/success_rate/mean": (sequence_score == 1.0).float().mean().detach().item(),
         # reward
         "critic/rewards/mean": torch.mean(sequence_reward).detach().item(),
         "critic/rewards/max": torch.max(sequence_reward).detach().item(),
@@ -59,11 +68,17 @@ def compute_data_metrics(batch):
         "response_length/mean": torch.mean(response_length).detach().item(),
         "response_length/max": torch.max(response_length).detach().item(),
         "response_length/min": torch.min(response_length).detach().item(),
+        "response_length/success_mean": torch.mean(success_response_length).detach().item(),
+        "response_length/success_max": torch.max(success_response_length).detach().item(),
+        "response_length/success_min": torch.min(success_response_length).detach().item(),
+        "response_length/failure_mean": torch.mean(failure_response_length).detach().item(),
+        "response_length/failure_max": torch.max(failure_response_length).detach().item(),
+        "response_length/failure_min": torch.min(failure_response_length).detach().item(),
         "response_length/clip_ratio": torch.mean(
             torch.eq(response_length, max_response_length).float()
         )
         .detach()
-        .item(),
+        .item(), # explains how many samples exceeded max response length
         # prompt length
         "prompt_length/mean": torch.mean(prompt_length).detach().item(),
         "prompt_length/max": torch.max(prompt_length).detach().item(),

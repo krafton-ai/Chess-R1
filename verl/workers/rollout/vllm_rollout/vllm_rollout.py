@@ -37,6 +37,7 @@ from verl.utils.torch_functional import get_eos_mask, pad_sequence_to_length
 from verl.workers.rollout.base import BaseRollout
 from verl.third_party.vllm import LLM, vllm_version
 from verl.third_party.vllm import parallel_state as vllm_ps
+from verl.utils.debug.env_vars_tracker import print_env_vars
 from vllm import SamplingParams
 
 # TODO
@@ -179,6 +180,8 @@ class vLLMRollout(BaseRollout):
 
     @torch.no_grad()
     def generate_sequences(self, prompts: DataProto, **kwargs) -> DataProto:
+        print_env_vars("vLLM Rollouts")
+
         # rebuild vllm cache engine
         if self.config.free_cache_engine:
             self.inference_engine.init_cache_engine()

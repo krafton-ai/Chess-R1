@@ -29,6 +29,7 @@ from verl.single_controller.base import Worker
 from verl.single_controller.base.decorator import register, Dispatch
 from verl.utils import hf_tokenizer, hf_processor
 from verl.utils.debug import log_gpu_memory_usage
+from verl.utils.debug.env_vars_tracker import print_env_vars
 from verl.utils.fs import copy_to_local
 from verl.utils.fsdp_utils import (
     get_fsdp_wrap_policy,
@@ -54,6 +55,11 @@ logger.setLevel(os.getenv("VERL_PPO_LOGGING_LEVEL", "WARN"))
 
 
 def create_device_mesh(world_size, fsdp_size):
+    """
+    Setup how GPUs will be organized for distributed training using FSDP
+    world_size : total number of GPUs available for training
+    fsdp_size : How many GPUs to use for model shardig
+    """
     if fsdp_size < 0 or fsdp_size >= world_size:
         device_mesh = init_device_mesh(
             "cuda", mesh_shape=(world_size,), mesh_dim_names=["fsdp"]
@@ -89,10 +95,14 @@ class ActorRolloutRefWorker(Worker):
     """
     This worker can be instantiated as a standalone actor or a standalone rollout or a standalone reference policy
     or a hybrid engine based on the config.rollout
+
+    This is where we call HF models
     """
 
     def __init__(self, config: DictConfig, role: str):
         super().__init__()
+        print_env_vars(f"ActorRolloutRefWorker init")
+
         self.config = config
         import torch.distributed
 
@@ -143,6 +153,8 @@ class ActorRolloutRefWorker(Worker):
         self._is_offload_param = False
         self._is_offload_optimizer = False
         if self._is_actor:
+            # these configurations do nothing for the actor. 
+            # it only works for the ref. check `actor_module_fsdp` instantiation
             self._is_offload_param = self.config.actor.fsdp_config.get(
                 "param_offload", False
             )
@@ -156,7 +168,9 @@ class ActorRolloutRefWorker(Worker):
 
         # normalize config
         if self._is_actor:
+            # we perform the rollouts in a batch manner!! 
             self.config.actor.ppo_mini_batch_size *= self.config.rollout.n
+            # And we're gonna distribute the mini batch across all GPUs equally
             self.config.actor.ppo_mini_batch_size //= (
                 self.device_mesh.shape[0] // self.ulysses_sequence_parallel_size
             )
@@ -249,6 +263,7 @@ class ActorRolloutRefWorker(Worker):
             torch_dtype = PrecisionType.to_dtype(torch_dtype)
 
         # override model kwargs
+        # set model configs as default configs defined at HF
         actor_model_config = AutoConfig.from_pretrained(
             local_path, trust_remote_code=trust_remote_code
         )
@@ -295,7 +310,7 @@ class ActorRolloutRefWorker(Worker):
                 pretrained_model_name_or_path=local_path,
                 torch_dtype=torch_dtype,
                 config=actor_model_config,
-                attn_implementation="flash_attention_2",
+                attn_implementation="flash_attention_2", # use flash attention-2 as default
                 trust_remote_code=trust_remote_code,
             )
             # Apply Liger kernel to the model if use_liger is set to True
@@ -367,7 +382,7 @@ class ActorRolloutRefWorker(Worker):
             use_orig_params=False,
             auto_wrap_policy=auto_wrap_policy,
             device_id=torch.cuda.current_device(),
-            sharding_strategy=sharding_strategy,  # zero3
+            sharding_strategy=sharding_strategy,  # zero3 : shard both model and optimizer
             mixed_precision=mixed_precision,
             sync_module_states=True,
             device_mesh=self.device_mesh,
@@ -497,6 +512,7 @@ class ActorRolloutRefWorker(Worker):
             else:
                 optim_config = None
                 fsdp_config = OmegaConf.create()
+            
             (
                 self.actor_module_fsdp,
                 self.actor_optimizer,
@@ -539,6 +555,7 @@ class ActorRolloutRefWorker(Worker):
             self.rollout, self.rollout_sharding_manager = self._build_rollout()
 
         if self._is_ref:
+            # TODO: (dy) why is this not vllm???? There shouldn't be any updates...
             self.ref_module_fsdp = self._build_model_optimizer(
                 model_path=self.config.model.path,
                 fsdp_config=self.config.ref.fsdp_config,
@@ -571,7 +588,10 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def update_actor(self, data: DataProto):
-        data = data.to("cuda")
+        """
+        Actual update occurs in update_policy (DataParallelPPOActor)
+        """
+        data = data.to('cuda')
 
         assert self._is_actor
         if self._is_offload_param:
@@ -623,7 +643,10 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def generate_sequences(self, prompts: DataProto):
-        prompts = prompts.to("cuda")
+        """
+        generate rollouts given input prompts
+        """
+        prompts = prompts.to('cuda')
 
         assert self._is_rollout
         if self._is_offload_param:
@@ -651,6 +674,7 @@ class ActorRolloutRefWorker(Worker):
             if self._is_offload_optimizer:
                 offload_fsdp_optimizer(optimizer=self.actor_optimizer)
 
+            #TODO: (dy) add gpu usage to logger!!
             log_gpu_memory_usage(
                 "After entering rollout sharding manager", logger=logger
             )

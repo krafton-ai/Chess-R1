@@ -14,30 +14,18 @@
 """
 Note that we don't combine the main with ray_trainer as ray_trainer is used by other main.
 """
+import os
 import ray
 import hydra
 import torch
 
 from verl import DataProto
-from verl.utils.reward_score import gsm8k, math, multiply, countdown
 from verl.trainer.ppo.ray_trainer import RayPPOTrainer
+from verl.utils.debug.env_vars_tracker import print_env_vars
 
-
-def _select_rm_score_fn(data_source):
-    if data_source == "openai/gsm8k":
-        return gsm8k.compute_score
-    elif data_source == "lighteval/MATH":
-        return math.compute_score
-    elif "multiply" in data_source or "arithmetic" in data_source:
-        return multiply.compute_score
-    elif "countdown" in data_source:
-        return countdown.compute_score
-    else:
-        raise NotImplementedError
-
-
-class RewardManager:
-    """The reward manager."""
+class RewardManager():
+    """The reward manager.
+    """
 
     def __init__(self, tokenizer, num_examine) -> None:
         self.tokenizer = tokenizer
@@ -50,10 +38,12 @@ class RewardManager:
         if "rm_scores" in data.batch.keys():
             return data.batch["rm_scores"]
 
-        reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
+        # Compute the reward for the generated responses
+        reward_tensor = torch.zeros_like(data.batch['responses'], dtype=torch.float32)
 
         already_print_data_sources = {}
 
+        # Compute reward row by row. Its not batched
         for i in range(len(data)):
             data_item = data[i]  # DataProtoItem
 
@@ -74,17 +64,17 @@ class RewardManager:
 
             # decode
             sequences = torch.cat((valid_prompt_ids, valid_response_ids))
-            sequences_str = self.tokenizer.decode(sequences)
+            sequences_str = self.tokenizer.decode(sequences) # decoded input prompt & output response
 
-            ground_truth = data_item.non_tensor_batch["reward_model"]["ground_truth"]
+            ground_truth = data_item.non_tensor_batch['reward_model']['ground_truth'] # answer
 
             # select rm_score
-            data_source = data_item.non_tensor_batch["data_source"]
-            compute_score_fn = _select_rm_score_fn(data_source)
+            data_source = data_item.non_tensor_batch['data_source']
+            compute_score_fn = self._select_rm_score_fn(data_source)
 
-            score = compute_score_fn(
-                solution_str=sequences_str, ground_truth=ground_truth
-            )
+            score = compute_score_fn(solution_str=sequences_str, ground_truth=ground_truth)
+            
+            # set the obtained reward at the final token
             reward_tensor[i, valid_response_length - 1] = score
 
             if data_source not in already_print_data_sources:
@@ -95,6 +85,22 @@ class RewardManager:
                 print(sequences_str)
 
         return reward_tensor
+    
+    def _select_rm_score_fn(self, data_source):
+        if data_source == 'openai/gsm8k':
+            from verl.utils.reward_score import gsm8k
+            return gsm8k.compute_score
+        elif data_source == 'lighteval/MATH':
+            from verl.utils.reward_score import math
+            return math.compute_score
+        elif "multiply" in data_source or "arithmetic" in data_source:
+            from verl.utils.reward_score import multiply
+            return multiply.compute_score
+        elif "countdown" in data_source:
+            from verl.utils.reward_score import countdown
+            return countdown.compute_score
+        else:
+            raise NotImplementedError
 
 
 @hydra.main(config_path="config", config_name="ppo_trainer", version_base=None)
@@ -107,17 +113,22 @@ def run_ppo(config, compute_score=None):
         # this is for local ray cluster
         ray.init(
             runtime_env={
-                "env_vars": {"TOKENIZERS_PARALLELISM": "true", "NCCL_DEBUG": "WARN"}
-            },
+                "env_vars": {
+                    "TOKENIZERS_PARALLELISM": "true", 
+                    "NCCL_DEBUG": "WARN",
+                    # Make sure VLLM_ATTENTION_BACKEND is set in the Ray runtime environment
+                    "VLLM_ATTENTION_BACKEND": os.environ.get("VLLM_ATTENTION_BACKEND", "XFORMERS"),
+                    # Set to "1" to allow debugging
+                    # "RAY_DEBUG": "1"
+                }
+            }
         )
-
     ray.get(main_task.remote(config, compute_score))
 
 
 @ray.remote(num_cpus=1)  # please make sure main_task is not scheduled on head
 def main_task(config, compute_score=None):
     from verl.utils.fs import copy_to_local
-
     # print initial config
     from pprint import pprint
     from omegaconf import OmegaConf
@@ -126,6 +137,9 @@ def main_task(config, compute_score=None):
         OmegaConf.to_container(config, resolve=True)
     )  # resolve=True will eval symbol values
     OmegaConf.resolve(config)
+
+    # Print environment variables at the beginning of main_task for sanity check of env vars
+    print_env_vars("Main task")
 
     # download the checkpoint from hdfs
     local_path = copy_to_local(config.actor_rollout_ref.model.path)
@@ -227,6 +241,7 @@ def main_task(config, compute_score=None):
         val_reward_fn=val_reward_fn,
     )
     trainer.init_workers()
+    # PPO Training code!!!!!
     trainer.fit()
 
 

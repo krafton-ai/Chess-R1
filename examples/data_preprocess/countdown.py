@@ -81,6 +81,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Modify local_dir if template includes "instruct"
+    if "instruct" in args.template_type:
+        if args.local_dir == "./data/countdown":  # Only modify if it's the default
+            args.local_dir = "./data/countdown-instruct"
+        # If hdfs_dir is provided, modify that too if it contains "countdown"
+        if args.hdfs_dir and "countdown" in args.hdfs_dir:
+            args.hdfs_dir = args.hdfs_dir.replace("countdown", "countdown-instruct")
+
+    data_source = "countdown"
+    TRAIN_SIZE = args.train_size
+    TEST_SIZE = args.test_size
+
     data_source = "countdown"
     TRAIN_SIZE = args.train_size
     TEST_SIZE = args.test_size

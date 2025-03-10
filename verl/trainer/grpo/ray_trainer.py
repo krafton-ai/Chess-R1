@@ -145,7 +145,10 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
         attention_mask = data.batch["attention_mask"]
         response_mask = attention_mask[:, -response_length:]
         advantages, returns = core_algos.compute_grpo_outcome_advantage(
-            token_level_rewards=token_level_rewards, eos_mask=response_mask, index=index
+            token_level_rewards=token_level_rewards, 
+            eos_mask=response_mask, 
+            index=index,
+            gamma=gamma,
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
@@ -664,7 +667,7 @@ class RayGRPOTrainer(object):
 
                         # we combine with rule-based rm
                         reward_tensor = self.train_reward_fn(batch)
-                        batch.batch["token_level_scores"] = reward_tensor
+                        batch.batch["token_level_scores"] = deepcopy(reward_tensor)
 
                         # compute rewards. apply_kl_penalty to the rewards if available
                         if not self.config.actor_rollout_ref.actor.get(
@@ -677,9 +680,9 @@ class RayGRPOTrainer(object):
                             )
                             metrics.update(kl_metrics)
                         else:
-                            batch.batch["token_level_rewards"] = batch.batch[
+                            batch.batch["token_level_rewards"] = deepcopy(batch.batch[
                                 "token_level_scores"
-                            ]
+                            ])
 
                         # compute advantages, executed on the driver process
                         batch = compute_advantage(

@@ -26,6 +26,8 @@ from typing import Type, Dict
 from copy import deepcopy
 
 import numpy as np
+import torch
+from verl.utils.torch_functional import masked_mean
 from codetiming import Timer
 from omegaconf import OmegaConf, open_dict
 from verl import DataProto
@@ -105,10 +107,6 @@ class ResourcePoolManager:
         return self.resource_pool_dict[self.mapping[role]]
 
 
-import torch
-from verl.utils.torch_functional import masked_mean
-
-
 def apply_kl_penalty(
     data: DataProto, kl_ctrl: core_algos.AdaptiveKLController, kl_penalty="kl"
 ):
@@ -175,7 +173,10 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
         attention_mask = data.batch["attention_mask"]
         response_mask = attention_mask[:, -response_length:]
         advantages, returns = core_algos.compute_grpo_outcome_advantage(
-            token_level_rewards=token_level_rewards, eos_mask=response_mask, index=index
+            token_level_rewards=token_level_rewards,
+            eos_mask=response_mask,
+            index=index,
+            gamma=gamma,
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
@@ -186,7 +187,9 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
         attention_mask = data.batch["attention_mask"]
         response_mask = attention_mask[:, -response_length:]
         advantages, returns = core_algos.compute_reinforce_plus_plus_outcome_advantage(
-            token_level_rewards=token_level_rewards, eos_mask=response_mask, gamma=gamma
+            token_level_rewards=token_level_rewards,
+            eos_mask=response_mask,
+            gamma=gamma
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
@@ -248,7 +251,6 @@ def _compute_response_info(batch):
 
 
 def compute_data_metrics(batch, use_critic=True):
-    # TODO: add response length
     sequence_score = batch.batch["token_level_scores"].sum(-1)
     sequence_reward = batch.batch["token_level_rewards"].sum(-1)
 
@@ -266,6 +268,14 @@ def compute_data_metrics(batch, use_critic=True):
     prompt_length = response_info["prompt_length"]
     response_length = response_info["response_length"]
 
+    success_traj_idx = sequence_score == 1.0
+    success_response_length = response_length[success_traj_idx]
+    if len(success_response_length) == 0 :
+        success_response_length = torch.tensor([0.0]) # no success
+    failure_response_length = response_length[~success_traj_idx]
+    if len(failure_response_length) == 0:
+        failure_response_length = torch.tensor([0.0]) # no failure
+
     valid_adv = torch.masked_select(advantages, response_mask)
     valid_returns = torch.masked_select(returns, response_mask)
 
@@ -280,6 +290,7 @@ def compute_data_metrics(batch, use_critic=True):
         "critic/score/mean": torch.mean(sequence_score).detach().item(),
         "critic/score/max": torch.max(sequence_score).detach().item(),
         "critic/score/min": torch.min(sequence_score).detach().item(),
+        "critic/success_rate/mean": (sequence_score == 1.0).float().mean().detach().item(),
         # reward
         "critic/rewards/mean": torch.mean(sequence_reward).detach().item(),
         "critic/rewards/max": torch.max(sequence_reward).detach().item(),
@@ -310,11 +321,17 @@ def compute_data_metrics(batch, use_critic=True):
         "response_length/mean": torch.mean(response_length).detach().item(),
         "response_length/max": torch.max(response_length).detach().item(),
         "response_length/min": torch.min(response_length).detach().item(),
+        "response_length/success_mean": torch.mean(success_response_length).detach().item(),
+        "response_length/success_max": torch.max(success_response_length).detach().item(),
+        "response_length/success_min": torch.min(success_response_length).detach().item(),
+        "response_length/failure_mean": torch.mean(failure_response_length).detach().item(),
+        "response_length/failure_max": torch.max(failure_response_length).detach().item(),
+        "response_length/failure_min": torch.min(failure_response_length).detach().item(),
         "response_length/clip_ratio": torch.mean(
             torch.eq(response_length, max_response_length).float()
         )
         .detach()
-        .item(),
+        .item(), # explains how many samples exceeded max response length
         # prompt length
         "prompt_length/mean": torch.mean(prompt_length).detach().item(),
         "prompt_length/max": torch.max(prompt_length).detach().item(),
@@ -420,6 +437,8 @@ class RayPPOTrainer(object):
         else:
             self.kl_ctrl = core_algos.FixedKLController(kl_coef=0.0)
 
+        # Whether or not to use additional critic model depends on 
+        # whether or not your gonna use PPO
         if self.config.algorithm.adv_estimator == AdvantageEstimator.GAE:
             self.use_critic = True
         elif self.config.algorithm.adv_estimator in [
@@ -432,6 +451,7 @@ class RayPPOTrainer(object):
         else:
             raise NotImplementedError
 
+        # Make sure configs are set right
         self._validate_config()
         self._create_dataloader()
 
@@ -441,6 +461,8 @@ class RayPPOTrainer(object):
         n_gpus = config.trainer.n_gpus_per_node * config.trainer.nnodes
 
         # 1. Check total batch size for data correctness
+        #    Real batch size = train_batch_size * Num rollouts
+        #    We're gonna divide the batch size equally over all devices
         real_train_batch_size = (
             config.data.train_batch_size * config.actor_rollout_ref.rollout.n
         )
@@ -1058,6 +1080,9 @@ class RayPPOTrainer(object):
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
+        #TODO: (dy) add evaluation code over here!!!!! This is the spot!! haha!!!
+        #           so the basic logic will be to perform evaluation alongside validation?
+        #           something on that line haha
         if self.val_reward_fn is not None and self.config.trainer.get(
             "val_before_train", True
         ):
@@ -1121,11 +1146,15 @@ class RayPPOTrainer(object):
 
                             del gen_baseline_batch, gen_baseline_output
 
+                    # Add Unique Identifier to each data sample
+                    # Its gonna be used later on to tie up relative rollout samples when computing advantage
                     batch.non_tensor_batch["uid"] = np.array(
                         [str(uuid.uuid4()) for _ in range(len(batch.batch))],
                         dtype=object,
                     )
                     # repeat to align with repeated responses in rollout
+                    # concat the generated responses.
+                    # Its a smart move since we get to utilize all rollout data for training
                     batch = batch.repeat(
                         repeat_times=self.config.actor_rollout_ref.rollout.n,
                         interleave=True,
@@ -1143,6 +1172,7 @@ class RayPPOTrainer(object):
                     ).tolist()
 
                     # recompute old_log_probs
+                    #TODO: (dy) can't we just use the computed log probs when generating the sequences??
                     with _timer("old_log_prob", timing_raw):
                         old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
                         batch = batch.union(old_log_prob)
@@ -1172,7 +1202,7 @@ class RayPPOTrainer(object):
 
                         # we combine with rule-based rm
                         reward_tensor = self.reward_fn(batch)
-                        batch.batch["token_level_scores"] = reward_tensor
+                        batch.batch["token_level_scores"] = deepcopy(reward_tensor)
 
                         # compute rewards. apply_kl_penalty to the rewards if available
                         if not self.config.actor_rollout_ref.actor.get(
@@ -1185,9 +1215,9 @@ class RayPPOTrainer(object):
                             )
                             metrics.update(kl_metrics)
                         else:
-                            batch.batch["token_level_rewards"] = batch.batch[
+                            batch.batch["token_level_rewards"] = deepcopy(batch.batch[
                                 "token_level_scores"
-                            ]
+                            ])
 
                         # compute advantages, executed on the driver process
                         batch = compute_advantage(
@@ -1207,9 +1237,9 @@ class RayPPOTrainer(object):
                         )
                         metrics.update(critic_output_metrics)
 
-                    # implement critic warmup
+                    # TODO: implement critic warmup
+                    # Update Actor!!
                     if self.config.trainer.critic_warmup <= self.global_steps:
-                        # update actor
                         with _timer("update_actor", timing_raw):
                             actor_output = self.actor_rollout_wg.update_actor(batch)
                         actor_output_metrics = reduce_metrics(
@@ -1218,6 +1248,9 @@ class RayPPOTrainer(object):
                         metrics.update(actor_output_metrics)
 
                     # validate
+                    #TODO: (dy) add evaluation code over here!!!!! This is the spot!! haha!!!
+                    #           so the basic logic will be to perform evaluation alongside validation?
+                    #           something on that line haha
                     if (
                         self.val_reward_fn is not None
                         and self.config.trainer.test_freq > 0

@@ -32,13 +32,13 @@ from verl.third_party.vllm import parallel_state as vllm_ps
 from verl import DataProto
 from verl.utils.torch_functional import broadcast_dict_tensor, allgather_dict_tensors
 from verl.utils.debug import log_gpu_memory_usage
+from verl.utils.debug.env_vars_tracker import print_env_vars
 from verl.third_party.vllm import vllm_version
 
 from .base import BaseShardingManager
 
 logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_PPO_LOGGING_LEVEL", "WARN"))
-
 
 class FSDPVLLMShardingManager(BaseShardingManager):
 
@@ -50,6 +50,8 @@ class FSDPVLLMShardingManager(BaseShardingManager):
         full_params: bool = False,
         device_mesh: DeviceMesh = None,
     ):
+        print_env_vars("FSDP_VLLM")
+
         self.module = module
         self.inference_engine = inference_engine
         self.model_config = model_config
@@ -144,7 +146,7 @@ class FSDPVLLMShardingManager(BaseShardingManager):
         self.module.train()
 
         # add empty cache after each compute
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
         # restore random states
         if self.device_mesh is not None:

@@ -379,7 +379,7 @@ class DataParallelPPOActor(BasePPOActor):
                         micro_batch=data, temperature=temperature
                     )
 
-                    pg_loss, pg_clipfrac, ppo_kl = core_algos.compute_policy_loss(
+                    pg_loss, pg_clipfrac, ppo_kl, ppo_ratio = core_algos.compute_policy_loss(
                         old_log_prob=old_log_prob,
                         log_prob=log_prob,
                         advantages=advantages,
@@ -418,11 +418,14 @@ class DataParallelPPOActor(BasePPOActor):
                         "actor/pg_loss": pg_loss.detach().item(),
                         "actor/pg_clipfrac": pg_clipfrac.detach().item(),
                         "actor/ppo_kl": ppo_kl.detach().item(),
+                        "actor/log_prob_ratio": ppo_ratio.detach().item(),
                     }
                     append_to_dict(metrics, data)
 
                 grad_norm = self._optimizer_step()
-                data = {"actor/grad_norm": grad_norm.detach().item()}
+                
+                data = {'actor/grad_norm': grad_norm.detach().item()}
+                
             append_to_dict(metrics, data)
         self.actor_optimizer.zero_grad()
         return metrics
