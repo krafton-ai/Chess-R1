@@ -3,7 +3,7 @@
 # Environment variables
 export N_GPUS=4
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-export ROLLOUT_TP_SIZE=$N_GPUS  # Set tensor parallel
+export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 
 # Define model and dataset
@@ -11,9 +11,9 @@ export BASE_MODEL="Qwen/Qwen2.5-7B-Instruct"
 export DATA_DIR="data/countdown-instruct"
 
 # Experiment metadata
-export USER_NAME="DY"
-export GROUP_NAME="test_refactoring_gamma"
-export EXPERIMENT_NAME="grpo_trainer"
+export USER_NAME="HJ"
+export GROUP_NAME="test"
+export EXPERIMENT_NAME="test"
 
 
 trainer_args=" \
@@ -23,9 +23,9 @@ trainer_args=" \
     trainer.logger=['tensorboard'] \
     trainer.n_gpus_per_node=$N_GPUS \
     trainer.nnodes=1 \
-    trainer.save_freq=-1 \
-    trainer.test_freq=100 \
-    trainer.total_training_steps=200 \
+    trainer.save_freq=500 \
+    trainer.test_freq=20 \
+    trainer.total_training_steps=500 \
 "
 
 # batch_size: data.train_batch_size * actor.num_response
@@ -38,7 +38,7 @@ data_args=" \
     data.val_files=$DATA_DIR/test.parquet \
     data.train_batch_size=32 \
     data.max_prompt_length=256 \
-    data.max_response_length=1024 \
+    data.max_response_length=2048 \
 "
 
 actor_args=" \
@@ -46,7 +46,7 @@ actor_args=" \
     actor_rollout_ref.actor.optim.lr=1e-6 \
     actor_rollout_ref.actor.epochs=1 \
     actor_rollout_ref.actor.mini_batch_size=32 \
-    actor_rollout_ref.actor.micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.actor.micro_batch_size_per_gpu=2 \
     actor_rollout_ref.actor.use_kl_loss=True \
     actor_rollout_ref.actor.kl_loss_coef=0.001 \
     actor_rollout_ref.actor.kl_loss_type=low_var_kl \
@@ -56,19 +56,19 @@ actor_args=" \
 
 rollout_args=" \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.2 \
-    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
     actor_rollout_ref.rollout.n=8 \
 "
 
 reference_args=" \
-    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=1 \
+    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.ref.fsdp_config.param_offload=True \
 "
 
 algorithm_args=" \
-    algorithm.gamma=0.995 \
+    algorithm.gamma=1.0 \
 "
 
 ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"

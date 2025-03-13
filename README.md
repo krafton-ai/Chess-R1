@@ -3,14 +3,14 @@
 ## Installation
 
 ```
-conda create -n chess python=3.10 sqlite==3.42.0
-conda activate chess
+conda create -n chess_llm python=3.10 sqlite==3.42.0
+conda activate chess_llm
 
 # install torch
 pip install torch==2.4.0
 
 # install vllm
-pip3 install vllm==0.5.4 
+pip3 install vllm==0.6.3
 pip3 install ray[default]
 
 # ignore the warning for the conflict with torch2.4
@@ -24,11 +24,20 @@ pip3 install flash-attn --no-build-isolation
 
 # install tensorboard (allow host view in kubeflow)
 pip install tensorboard
-sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/chess/lib/python3.10/site-packages/tensorboard/plugins/core/core_plugin.py
+sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/chess_llm/lib/python3.10/site-packages/tensorboard/plugins/core/core_plugin.py
+
+# skythought
+cd verl/third_party/SkyThought
+pip install -e .
 
 # utilities
 pip install -r requirements.txt
 conda install tmux
+```
+
+```
+source ~/.bashrc
+conda activate chess_llm
 ```
 
 ## Countdown task
@@ -36,27 +45,22 @@ conda install tmux
 **Data Preparation**
 ```
 # For Base models
-source ~/.bashrc
-conda activate chess
 python ./examples/data_preprocess/countdown.py
 
 # For Instruct models
-source ~/.bashrc
-conda activate chess
 python ./examples/data_preprocess/countdown.py --template qwen-instruct
 ```
 
 ### Run Training
 
 ```
-bash scripts/test.sh
+bash scripts/test_grpo.sh
 ```
 
 ### Run Evaluation
 
 ```
-cd verl/evaluation
-python eval.py --model Qwen/Qwen2.5-1.5B-Instruct --evals=MATH500 --tp=4 --output_file=results.txt --temperatures 0.7 
+skythought evaluate --model Qwen/Qwen2.5-7B-Instruct --task gsm8k --backend vllm --backend-args tensor_parallel_size=1,gpu_memory_utilization=0.8 --sampling-params max_tokens=2048,temperature=0.7,top_p=0.8,top_k=20,repetition_penalty=1.05 --n 1
 ```
 
 ## Acknowledge

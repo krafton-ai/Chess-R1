@@ -1,0 +1,16 @@
+[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/eval_test/eval_test/latest_checkpointed_iteration.txt
+[stdout] Training from scratch
+[stdout] validation generation end
+[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.32636718831781764}"
+[stderr] Training:   0%|          | 0/10 [00:00<?, ?step/s][stdout] step 1
+[stderr] Training:  10%|#         | 1/10 [01:06<09:58, 66.51s/step][stdout] step 2
+[stderr] Training:  20%|##        | 2/10 [02:15<09:05, 68.23s/step][stdout] step 3
+[stderr] Training:  30%|###       | 3/10 [03:31<08:21, 71.62s/step][stdout] step 4
+[stderr] Training:  40%|####      | 4/10 [04:46<07:16, 72.76s/step][stdout] step 5
+[stderr] Training:  50%|#####     | 5/10 [06:01<06:09, 73.83s/step][stdout] step 6
+[stderr] Training:  60%|######    | 6/10 [07:16<04:57, 74.25s/step][stdout] step 7
+[stderr] Training:  70%|#######   | 7/10 [08:33<03:45, 75.03s/step][stdout] step 8
+[stderr] Training:  80%|########  | 8/10 [09:50<02:31, 75.79s/step][stdout] step 9
+[stderr] Training:  90%|######### | 9/10 [11:06<01:15, 75.58s/step][stderr] Training:  90%|######### | 9/10 [11:06<01:14, 74.01s/step]
+[stdout] validation generation end
+[stdout] "Final validation metrics: {'val/test_score/countdown': 0.34599609438009793}"

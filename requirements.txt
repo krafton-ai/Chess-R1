@@ -8,3 +8,6 @@ scipy==1.15.2
 wandb==0.19.8
 IPython==8.33.0
 matplotlib==3.10.1
+typer==0.15.2
+hf_transfer==0.1.9
+pydantic==2.10.6

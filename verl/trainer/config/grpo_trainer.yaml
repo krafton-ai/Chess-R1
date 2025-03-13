@@ -17,6 +17,7 @@ trainer:
   remove_previous_ckpt_in_save: False
   del_local_ckpt_after_load: False
   default_local_dir: checkpoints/${trainer.group_name}/${trainer.experiment_name}
+  default_hdfs_dir: checkpoints/${trainer.group_name}/${trainer.experiment_name}
 
 data:
   seed: 1

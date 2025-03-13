@@ -1,0 +1,116 @@
+[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/test_chi_square/reverse_kl_grad/latest_checkpointed_iteration.txt
+[stdout] Training from scratch
+[stdout] validation generation end
+[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.324609375820728}"
+[stderr] Training:   0%|          | 0/200 [00:00<?, ?step/s][stdout] step 1
+[stderr] Training:   0%|          | 1/200 [01:08<3:46:52, 68.40s/step][stdout] step 2
+[stderr] Training:   1%|1         | 2/200 [02:22<3:57:00, 71.82s/step][stdout] step 3
+[stderr] Training:   2%|1         | 3/200 [03:37<4:00:43, 73.32s/step][stdout] step 4
+[stderr] Training:   2%|2         | 4/200 [04:50<3:59:13, 73.23s/step][stdout] step 5
+[stderr] Training:   2%|2         | 5/200 [06:03<3:56:51, 72.88s/step][stdout] step 6
+[stderr] Training:   3%|3         | 6/200 [07:12<3:51:58, 71.74s/step][stdout] step 7
+[stderr] Training:   4%|3         | 7/200 [08:26<3:53:11, 72.50s/step][stdout] step 8
+[stderr] Training:   4%|4         | 8/200 [09:40<3:53:25, 72.95s/step][stdout] step 9
+[stderr] Training:   4%|4         | 9/200 [10:54<3:53:14, 73.27s/step][stdout] step 10
+[stderr] Training:   5%|5         | 10/200 [12:11<3:55:29, 74.37s/step][stdout] step 11
+[stderr] Training:   6%|5         | 11/200 [13:29<3:57:42, 75.46s/step][stdout] step 12
+[stderr] Training:   6%|6         | 12/200 [14:43<3:55:18, 75.10s/step][stdout] step 13
+[stderr] Training:   6%|6         | 13/200 [15:59<3:54:46, 75.33s/step][stdout] step 14
+[stderr] Training:   7%|7         | 14/200 [17:22<4:00:23, 77.55s/step][stdout] step 15
+[stderr] Training:   8%|7         | 15/200 [18:41<4:01:16, 78.25s/step][stdout] step 16
+[stderr] Training:   8%|8         | 16/200 [20:03<4:03:23, 79.36s/step][stdout] step 17
+[stderr] Training:   8%|8         | 17/200 [21:27<4:06:21, 80.77s/step][stdout] step 18
+[stderr] Training:   9%|9         | 18/200 [22:52<4:08:20, 81.87s/step][stdout] step 19
+[stderr] Training:  10%|9         | 19/200 [24:19<4:11:26, 83.35s/step][stdout] step 20
+[stderr] Training:  10%|#         | 20/200 [25:48<4:15:49, 85.27s/step][stdout] step 21
+[stderr] Training:  10%|#         | 21/200 [27:15<4:15:48, 85.75s/step][stdout] step 22
+[stderr] Training:  11%|#1        | 22/200 [28:41<4:14:38, 85.84s/step][stdout] step 23
+[stderr] Training:  12%|#1        | 23/200 [30:07<4:13:19, 85.87s/step][stdout] step 24
+[stderr] Training:  12%|#2        | 24/200 [31:35<4:13:26, 86.40s/step][stdout] step 25
+[stderr] Training:  12%|#2        | 25/200 [33:01<4:11:42, 86.30s/step][stdout] step 26
+[stderr] Training:  13%|#3        | 26/200 [34:29<4:11:48, 86.83s/step][stdout] step 27
+[stderr] Training:  14%|#3        | 27/200 [36:02<4:15:40, 88.67s/step][stdout] step 28
+[stderr] Training:  14%|#4        | 28/200 [37:27<4:10:58, 87.55s/step][stdout] step 29
+[stderr] Training:  14%|#4        | 29/200 [39:00<4:14:21, 89.25s/step][stdout] step 30
+[stderr] Training:  15%|#5        | 30/200 [40:29<4:12:45, 89.21s/step][stdout] step 31
+[stderr] Training:  16%|#5        | 31/200 [41:59<4:11:43, 89.37s/step][stdout] step 32
+[stderr] Training:  16%|#6        | 32/200 [43:35<4:15:47, 91.36s/step][stdout] step 33
+[stderr] Training:  16%|#6        | 33/200 [45:14<4:20:33, 93.61s/step][stdout] step 34
+[stderr] Training:  17%|#7        | 34/200 [46:52<4:22:45, 94.97s/step][stdout] step 35
+[stderr] Training:  18%|#7        | 35/200 [48:27<4:20:57, 94.90s/step][stdout] step 36
+[stderr] Training:  18%|#8        | 36/200 [50:02<4:19:16, 94.86s/step][stdout] step 37
+[stderr] Training:  18%|#8        | 37/200 [51:37<4:17:59, 94.97s/step][stdout] step 38
+[stderr] Training:  19%|#9        | 38/200 [53:13<4:17:13, 95.27s/step][stdout] step 39
+[stderr] Training:  20%|#9        | 39/200 [54:46<4:14:10, 94.73s/step][stdout] step 40
+[stderr] Training:  20%|##        | 40/200 [56:22<4:13:26, 95.04s/step][stdout] step 41
+[stderr] Training:  20%|##        | 41/200 [58:07<4:19:26, 97.90s/step][stdout] step 42
+[stderr] Training:  21%|##1       | 42/200 [59:47<4:19:57, 98.72s/step][stdout] step 43
+[stderr] Training:  22%|##1       | 43/200 [1:01:22<4:15:21, 97.59s/step][stdout] step 44
+[stderr] Training:  22%|##2       | 44/200 [1:02:59<4:12:53, 97.27s/step][stdout] step 45
+[stderr] Training:  22%|##2       | 45/200 [1:04:41<4:15:17, 98.82s/step][stdout] step 46
+[stderr] Training:  23%|##3       | 46/200 [1:06:25<4:17:19, 100.26s/step][stdout] step 47
+[stderr] Training:  24%|##3       | 47/200 [1:07:58<4:10:02, 98.06s/step] [stdout] step 48
+[stderr] Training:  24%|##4       | 48/200 [1:09:31<4:04:41, 96.59s/step][stdout] step 49
+[stderr] Training:  24%|##4       | 49/200 [1:11:07<4:02:29, 96.36s/step][stdout] step 50
+[stderr] Training:  25%|##5       | 50/200 [1:12:37<3:56:38, 94.65s/step][stdout] step 51
+[stderr] Training:  26%|##5       | 51/200 [1:14:11<3:54:20, 94.36s/step][stdout] step 52
+[stderr] Training:  26%|##6       | 52/200 [1:15:44<3:51:39, 93.91s/step][stdout] step 53
+[stderr] Training:  26%|##6       | 53/200 [1:17:20<3:51:42, 94.58s/step][stdout] step 54
+[stderr] Training:  27%|##7       | 54/200 [1:18:49<3:46:16, 92.99s/step][stdout] step 55
+[stderr] Training:  28%|##7       | 55/200 [1:20:16<3:40:24, 91.20s/step][stdout] step 56
+[stderr] Training:  28%|##8       | 56/200 [1:21:49<3:40:15, 91.77s/step][stdout] step 57
+[stderr] Training:  28%|##8       | 57/200 [1:23:22<3:39:29, 92.10s/step][stdout] step 58
+[stderr] Training:  29%|##9       | 58/200 [1:24:53<3:36:54, 91.65s/step][stdout] step 59
+[stderr] Training:  30%|##9       | 59/200 [1:26:24<3:34:56, 91.46s/step][stdout] step 60
+[stderr] Training:  30%|###       | 60/200 [1:27:57<3:34:18, 91.85s/step][stdout] step 61
+[stderr] Training:  30%|###       | 61/200 [1:29:31<3:34:43, 92.69s/step][stdout] step 62
+[stderr] Training:  31%|###1      | 62/200 [1:31:03<3:32:37, 92.44s/step][stdout] step 63
+[stderr] Training:  32%|###1      | 63/200 [1:32:33<3:29:31, 91.76s/step][stdout] step 64
+[stderr] Training:  32%|###2      | 64/200 [1:34:03<3:26:17, 91.01s/step][stdout] step 65
+[stderr] Training:  32%|###2      | 65/200 [1:35:38<3:27:35, 92.26s/step][stdout] step 66
+[stderr] Training:  33%|###3      | 66/200 [1:37:07<3:23:48, 91.25s/step][stdout] step 67
+[stderr] Training:  34%|###3      | 67/200 [1:38:36<3:21:02, 90.69s/step][stdout] step 68
+[stderr] Training:  34%|###4      | 68/200 [1:40:05<3:18:18, 90.14s/step][stdout] step 69
+[stderr] Training:  34%|###4      | 69/200 [1:41:29<3:13:03, 88.42s/step][stdout] step 70
+[stderr] Training:  35%|###5      | 70/200 [1:42:56<3:10:26, 87.89s/step][stdout] step 71
+[stderr] Training:  36%|###5      | 71/200 [1:44:18<3:04:55, 86.01s/step][stdout] step 72
+[stderr] Training:  36%|###6      | 72/200 [1:45:38<2:59:39, 84.22s/step][stdout] step 73
+[stderr] Training:  36%|###6      | 73/200 [1:47:09<3:02:42, 86.32s/step][stdout] step 74
+[stderr] Training:  37%|###7      | 74/200 [1:48:38<3:02:46, 87.04s/step][stdout] step 75
+[stderr] Training:  38%|###7      | 75/200 [1:50:09<3:04:19, 88.48s/step][stdout] step 76
+[stderr] Training:  38%|###8      | 76/200 [1:51:41<3:05:04, 89.55s/step][stdout] step 77
+[stderr] Training:  38%|###8      | 77/200 [1:53:10<3:03:01, 89.28s/step][stdout] step 78
+[stderr] Training:  39%|###9      | 78/200 [1:54:38<3:00:36, 88.82s/step][stdout] step 79
+[stderr] Training:  40%|###9      | 79/200 [1:56:03<2:57:05, 87.81s/step][stdout] step 80
+[stderr] Training:  40%|####      | 80/200 [1:57:37<2:58:55, 89.46s/step][stdout] step 81
+[stderr] Training:  40%|####      | 81/200 [1:59:20<3:05:51, 93.71s/step][stdout] step 82
+[stderr] Training:  41%|####1     | 82/200 [2:00:51<3:02:37, 92.86s/step][stdout] step 83
+[stderr] Training:  42%|####1     | 83/200 [2:02:30<3:04:41, 94.72s/step][stdout] step 84
+[stderr] Training:  42%|####2     | 84/200 [2:04:10<3:06:16, 96.35s/step][stdout] step 85
+[stderr] Training:  42%|####2     | 85/200 [2:05:54<3:08:39, 98.43s/step][stdout] step 86
+[stderr] Training:  43%|####3     | 86/200 [2:07:31<3:06:33, 98.19s/step][stdout] step 87
+[stderr] Training:  44%|####3     | 87/200 [2:09:06<3:02:50, 97.09s/step][stdout] step 88
+[stderr] Training:  44%|####4     | 88/200 [2:10:49<3:04:47, 98.99s/step][stdout] step 89
+[stderr] Training:  44%|####4     | 89/200 [2:12:29<3:03:40, 99.28s/step][stdout] step 90
+[stderr] Training:  45%|####5     | 90/200 [2:13:59<2:56:34, 96.31s/step][stdout] step 91
+[stderr] Training:  46%|####5     | 91/200 [2:15:40<2:57:40, 97.81s/step][stdout] step 92
+[stderr] Training:  46%|####6     | 92/200 [2:17:18<2:56:11, 97.88s/step][stdout] step 93
+[stderr] Training:  46%|####6     | 93/200 [2:18:50<2:51:23, 96.10s/step][stdout] step 94
+[stderr] Training:  47%|####6     | 94/200 [2:20:28<2:50:39, 96.60s/step][stdout] step 95
+[stderr] Training:  48%|####7     | 95/200 [2:22:05<2:49:15, 96.72s/step][stdout] step 96
+[stderr] Training:  48%|####8     | 96/200 [2:23:28<2:40:46, 92.75s/step][stdout] step 97
+[stderr] Training:  48%|####8     | 97/200 [2:24:59<2:38:10, 92.14s/step][stdout] step 98
+[stderr] Training:  49%|####9     | 98/200 [2:26:33<2:37:51, 92.86s/step][stdout] step 99
+[stderr] Training:  50%|####9     | 99/200 [2:28:06<2:36:18, 92.85s/step][stdout] step 100
+[stdout] validation generation end
+[stderr] Training:  50%|#####     | 100/200 [2:31:24<3:27:15, 124.35s/step][stdout] step 101
+[stderr] Training:  50%|#####     | 101/200 [2:32:52<3:07:07, 113.41s/step][stdout] step 102
+[stderr] Training:  51%|#####1    | 102/200 [2:34:25<2:55:05, 107.20s/step][stdout] step 103
+[stderr] Training:  52%|#####1    | 103/200 [2:35:48<2:41:51, 100.12s/step][stdout] step 104
+[stderr] Training:  52%|#####2    | 104/200 [2:37:15<2:33:33, 95.97s/step] [stdout] step 105
+[stderr] Training:  52%|#####2    | 105/200 [2:38:36<2:25:13, 91.72s/step][stdout] step 106
+[stderr] Training:  53%|#####3    | 106/200 [2:40:03<2:21:08, 90.09s/step][stdout] step 107
+[stderr] Training:  54%|#####3    | 107/200 [2:41:31<2:19:01, 89.70s/step][stdout] step 108
+[stderr] Training:  54%|#####4    | 108/200 [2:43:03<2:18:21, 90.23s/step][stdout] step 109
+[stderr] Training:  55%|#####4    | 109/200 [2:44:22<2:11:47, 86.90s/step][stdout] step 110
+[stderr] Training:  55%|#####4    | 109/200 [2:44:43<2:17:30, 90.67s/step]

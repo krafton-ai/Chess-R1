@@ -1,0 +1,13 @@
+[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/test_refactoring_gamma/grpo_trainer/latest_checkpointed_iteration.txt
+[stdout] Training from scratch
+[stdout] validation generation end
+[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.3246093758061761}"
+[stderr] Training:   0%|          | 0/200 [00:00<?, ?step/s][stdout] step 1
+[stderr] Training:   0%|          | 1/200 [01:02<3:27:11, 62.47s/step][stdout] step 2
+[stderr] Training:   1%|1         | 2/200 [02:02<3:22:11, 61.27s/step][stdout] step 3
+[stderr] Training:   2%|1         | 3/200 [03:00<3:15:06, 59.42s/step][stdout] step 4
+[stderr] Training:   2%|2         | 4/200 [03:57<3:11:05, 58.50s/step][stdout] step 5
+[stderr] Training:   2%|2         | 5/200 [04:53<3:07:08, 57.58s/step][stdout] step 6
+[stderr] Training:   3%|3         | 6/200 [05:52<3:07:47, 58.08s/step][stdout] step 7
+[stderr] Training:   4%|3         | 7/200 [06:50<3:06:32, 57.99s/step][stdout] step 8
+[stderr] Training:   4%|3         | 7/200 [06:55<3:10:47, 59.31s/step]
