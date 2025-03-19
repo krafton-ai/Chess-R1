@@ -341,7 +341,6 @@ def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange)
     return pg_loss, pg_clipfrac, ppo_kl, ppo_ratio
 
 
-
 def compute_entropy_loss(logits, eos_mask):
     """Compute Categorical entropy loss
 

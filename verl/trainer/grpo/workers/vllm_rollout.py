@@ -55,6 +55,10 @@ def _pre_process_inputs(pad_token_id, prompt_token_ids: torch.Tensor) -> List[in
     token_ids = prompt_token_ids[non_pad_index:].tolist()
     return token_ids
 
+def safe_getattr(obj, attr, default):
+    value = getattr(obj, attr, None)
+    return default if value is None else value
+
 
 class vLLMRollout(BaseRollout):
 
@@ -64,6 +68,7 @@ class vLLMRollout(BaseRollout):
         config: DictConfig,
         tokenizer,
         model_hf_config,
+        model_hf_generation_config,
         **kwargs,
     ):
         """A vLLM rollout. It requires the module is supported by the vllm.
@@ -73,10 +78,12 @@ class vLLMRollout(BaseRollout):
             config: DictConfig
             tokenizer: the task/model tokenizer
             model_hf_config: the huggingface config to initiallize the generating model in vllm
+            model_hf_generation_config: the huggingface configs for generating sequences
             **kwargs: train_tp, for Megatron Backend to initialize hybrid engine (zero redundancy) process group
         """
         super().__init__()
         self.config = config
+        self.model_hf_generation_config = model_hf_generation_config
         assert not (
             not config.enforce_eager and config.free_cache_engine
         ), "disable CUDA graph (enforce_eager = False) if free cache engine"
@@ -137,6 +144,7 @@ class vLLMRollout(BaseRollout):
             max_num_batched_tokens=max_num_batched_tokens,
             enable_chunked_prefill=config.enable_chunked_prefill,
         )
+        
 
         # Offload vllm model to reduce peak memory usage
         self.inference_engine.offload_model_weights()
@@ -197,17 +205,20 @@ class vLLMRollout(BaseRollout):
         # parse idx from torch.Tensor to List[List[str]]
         for i in range(batch_size):
             idx_list.append(_pre_process_inputs(self.pad_token_id, idx[i]))
-
-        do_sample = prompts.meta_info.get("do_sample", True)
-        if not do_sample:
-            kwargs = {
-                "best_of": 1,
-                "top_p": 1.0,
-                "top_k": -1,
-                "min_p": 0.0,
-                "temperature": 0,
-                "n": 1,  # if greedy, only 1 response
+        
+        kwargs = {
+                "top_p": safe_getattr(self.model_hf_generation_config, 'top_p', 1.0),
+                "top_k": safe_getattr(self.model_hf_generation_config, 'top_k', -1),
+                "min_p": safe_getattr(self.model_hf_generation_config, 'min_p', 0.0),
+                "repetition_penalty": safe_getattr(self.model_hf_generation_config, 'repetition_penalty', 1.0),
+                "temperature": self.config.temperature, # use temperature value we give in bash
+                "n": self.config.n, # num rollouts for gathering sample
             }
+        
+        do_validation = prompts.meta_info.get("validate", False)
+        if do_validation:
+            # Use generation_config if they exist in recommended configs
+            kwargs["n"] = self.config.validate.num_rollouts_for_eval  # use multiple rollouts for fair eval
 
         # users can customize different sampling_params at different run
         with self.update_sampling_params(**kwargs):
@@ -217,7 +228,7 @@ class vLLMRollout(BaseRollout):
                 prompt_token_ids=idx_list,
                 use_tqdm=False,
             )
-
+        
         # TODO(sgm): disable logprob when recompute_log_prob is enable
         # if n = 1: (bs, response_length) ; if n > 1: (bs * n, response_length)
         response = output[0].to(idx.device)
@@ -231,11 +242,17 @@ class vLLMRollout(BaseRollout):
                 log_probs, self.config.response_length, self.pad_token_id
             )
 
-        if self.config.n > 1 and do_sample:
-            idx = idx.repeat_interleave(self.config.n, dim=0)
-            attention_mask = attention_mask.repeat_interleave(self.config.n, dim=0)
-            position_ids = position_ids.repeat_interleave(self.config.n, dim=0)
-            batch_size = batch_size * self.config.n
+        repeat_factor = None
+        if self.config.n > 1 and not do_validation:
+            repeat_factor = self.config.n
+        elif self.config.validate.num_rollouts_for_eval > 1 and do_validation:
+            repeat_factor = self.config.validate.num_rollouts_for_eval
+
+        if repeat_factor is not None:
+            idx = idx.repeat_interleave(repeat_factor, dim=0)
+            attention_mask = attention_mask.repeat_interleave(repeat_factor, dim=0)
+            position_ids = position_ids.repeat_interleave(repeat_factor, dim=0)
+            batch_size = batch_size * repeat_factor
 
         seq = torch.cat([idx, response], dim=-1)
 

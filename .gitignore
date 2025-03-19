@@ -120,3 +120,11 @@ tests/e2e/toy_examples/deepspeed/synchronous/output.txt
 
 # model
 core
+
+# too heavy logs
+*.txt
+*.log
+
+# different repo
+searchless_chess/
+chess_dataset/

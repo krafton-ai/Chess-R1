@@ -7,14 +7,18 @@ export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 
 # Define model and dataset
-export BASE_MODEL="Qwen/Qwen2.5-7B-Instruct"
+export BASE_MODEL="Qwen/Qwen2.5-3B-Instruct"
 export DATA_DIR="data/countdown-instruct"
 
 # Experiment metadata
-export USER_NAME="HJ"
+export USER_NAME="DY"
 export GROUP_NAME="test"
-export EXPERIMENT_NAME="test"
+export EXPERIMENT_NAME="refactor_sanitycheck"
 
+# Create the log directory with the same pattern as tensorboard logs
+export TODAY_DATE=$(date +"%m%d")
+export LOG_DIR="tb_logs/${USER_NAME}/${TODAY_DATE}/${GROUP_NAME}/${EXPERIMENT_NAME}"
+mkdir -p $LOG_DIR
 
 trainer_args=" \
     trainer.user_name=$USER_NAME \
@@ -60,6 +64,8 @@ rollout_args=" \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
     actor_rollout_ref.rollout.n=8 \
+    actor_rollout_ref.rollout.temperature=0.6 \
+    actor_rollout_ref.rollout.validate.num_rollouts_for_eval=5 \
 "
 
 reference_args=" \
@@ -74,4 +80,5 @@ algorithm_args=" \
 ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"
 
 ray stop --force && ray start --head --include-dashboard=True
-python -m verl.trainer.main_grpo $ARGS 2>&1 | tee verl_demo.log
+python -m verl.trainer.main_grpo $ARGS \
+2>&1 | tee ${LOG_DIR}/verl_demo.log

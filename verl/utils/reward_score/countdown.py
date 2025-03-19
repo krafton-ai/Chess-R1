@@ -7,10 +7,12 @@ import operator
 def extract_solution(solution_str):
     """Extract the equation from the solution string."""
     # Remove everything before the first "Assistant:"
-    if "Assistant:" in solution_str:
+    if "Assistant:" in solution_str: # base
         solution_str = solution_str.split("Assistant:", 1)[1]
-    elif "<|im_start|>assistant" in solution_str:
+    elif "<|im_start|>assistant" in solution_str: # qwen instruct
         solution_str = solution_str.split("<|im_start|>assistant", 1)[1]
+    elif "<|start_header_id|>assistant<|end_header_id|>" in solution_str: # llama instruct
+        solution_str = solution_str.split("<|start_header_id|>assistant<|end_header_id|>", 1)[1]
     else:
         return None
     solution_str = solution_str.split("\n")[-1]
@@ -57,19 +59,21 @@ def evaluate_equation(equation_str):
 
 
 def compute_score(
-    solution_str, ground_truth, method="strict", format_score=0.1, score=1.0
+    solution_str, ground_truth_dict, method="strict", format_score=0.1, score=1.0
 ):
     """The scoring function for countdown task.
 
     Args:
         solution_str: the solution text
-        ground_truth: dictionary containing target number and available numbers
+        ground_truth_dict: dictionary containing target number and available numbers
         method: the method to extract the solution
         format_score: the score for correct format but wrong answer
         score: the score for the correct answer
     """
-    target = ground_truth["target"]
-    numbers = ground_truth["numbers"]
+    reward_logs = {}
+
+    target = ground_truth_dict["target"]
+    numbers = ground_truth_dict["numbers"]
 
     equation = extract_solution(solution_str=solution_str)
     # do_print = random.randint(1, 64) == 1
@@ -84,7 +88,7 @@ def compute_score(
     if equation is None:
         if do_print:
             print(f"No equation found")
-        return 0
+        return 0, reward_logs
     
     # (dy) This is a bit odd... I'm giving plus rewards for being invalid...?
     #      Well, you are matching the format and just it ...
@@ -93,7 +97,7 @@ def compute_score(
     if not validate_equation(equation, numbers):
         if do_print:
             print(f"Invalid equation")
-        return format_score
+        return format_score, reward_logs
 
     # Evaluate equation
     try:
@@ -101,17 +105,17 @@ def compute_score(
         if result is None:
             if do_print:
                 print(f"Could not evaluate equation")
-            return format_score
+            return format_score, reward_logs
 
         if abs(result - target) < 1e-5:  # Account for floating point precision
             if do_print:
                 print(f"Correct equation: {equation} = {result}")
-            return score
+            return score, reward_logs
         else:
             if do_print:
                 print(f"Wrong result: equation = {result}, target = {target}")
-            return format_score
+            return format_score, reward_logs
     except:
         if do_print:
             print(f"Error evaluating equation")
-        return format_score
+        return format_score, reward_logs

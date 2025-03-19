@@ -17,7 +17,6 @@ import ray
 import hydra
 from verl.trainer.grpo.ray_trainer import RayGRPOTrainer
 
-
 @hydra.main(config_path="config", config_name="grpo_trainer", version_base=None)
 def main(config):
     run_grpo(config)
@@ -34,7 +33,7 @@ def run_grpo(config, compute_score=None):
                     # Make sure VLLM_ATTENTION_BACKEND is set in the Ray runtime environment
                     "VLLM_ATTENTION_BACKEND": os.environ.get("VLLM_ATTENTION_BACKEND", "XFORMERS"),
                     # Set to "1" to allow debugging
-                    # "RAY_DEBUG": "1"
+                    "RAY_DEBUG": "1"
                 }
             }
         )

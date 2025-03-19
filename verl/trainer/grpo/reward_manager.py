@@ -14,7 +14,7 @@
 # from . import gsm8k, math, prime_math, prime_code
 import torch
 from verl import DataProto
-from verl.utils.reward_score import gsm8k, math, multiply, countdown
+from verl.utils.reward_score import gsm8k, math, multiply, countdown, chess
 
 
 def _select_rm_score_fn(data_source):
@@ -26,6 +26,8 @@ def _select_rm_score_fn(data_source):
         return multiply.compute_score
     elif "countdown" in data_source:
         return countdown.compute_score
+    elif "chess" in data_source:
+        return chess.compute_score
     else:
         raise NotImplementedError
 
@@ -47,7 +49,7 @@ class RewardManager:
         reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
 
         already_print_data_sources = {}
-
+        agg_reward_logs = {'format': 0, 'legal_uci': 0, 'legal_move': 0, 'optimal': 0}
         for i in range(len(data)):
             data_item = data[i]  # DataProtoItem
 
@@ -70,16 +72,20 @@ class RewardManager:
             sequences = torch.cat((valid_prompt_ids, valid_response_ids))
             sequences_str = self.tokenizer.decode(sequences)
 
-            ground_truth = data_item.non_tensor_batch["reward_model"]["ground_truth"]
+            ground_truth_dict = data_item.non_tensor_batch["reward_model"]["ground_truth"]
 
             # select rm_score
             data_source = data_item.non_tensor_batch["data_source"]
             compute_score_fn = _select_rm_score_fn(data_source)
 
-            score = compute_score_fn(
-                solution_str=sequences_str, ground_truth=ground_truth
-            )
+            score, reward_logs = compute_score_fn(
+                    solution_str=sequences_str, ground_truth_dict=ground_truth_dict
+                )
             reward_tensor[i, valid_response_length - 1] = score
+
+            # aggregate logging metrics
+            for key, value in reward_logs.items():
+                agg_reward_logs[key] += value
 
             if data_source not in already_print_data_sources:
                 already_print_data_sources[data_source] = 0
@@ -87,5 +93,10 @@ class RewardManager:
             if already_print_data_sources[data_source] < self.num_examine:
                 already_print_data_sources[data_source] += 1
                 # print(sequences_str)
-
-        return reward_tensor
+        
+        # normalize aggregate logging metrics
+        normalized_agg_reward_logs = {}
+        for key in agg_reward_logs.keys():
+            normalized_agg_reward_logs[f'reward/{key}'] = agg_reward_logs[key] / len(data)
+        
+        return reward_tensor, normalized_agg_reward_logs

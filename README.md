@@ -30,6 +30,9 @@ sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/ch
 cd verl/third_party/SkyThought
 pip install -e .
 
+# chess dataset
+git clone https://github.com/google-deepmind/searchless_chess.git
+
 # utilities
 pip install -r requirements.txt
 conda install tmux
@@ -40,7 +43,37 @@ source ~/.bashrc
 conda activate chess_llm
 ```
 
-## Countdown task
+## Chess task
+
+**Data Preparation**
+```
+cd searchless_chess/data
+wget https://storage.googleapis.com/searchless_chess/data/eco_openings.pgn
+wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
+mkdir test
+cd test
+wget https://storage.googleapis.com/searchless_chess/data/test/behavioral_cloning_data.bag
+cd ..
+
+mkdir train
+cd train
+wget https://storage.googleapis.com/searchless_chess/data/train/behavioral_cloning_data.bag
+cd ../../..
+
+# For instruct models
+python ./examples/data_preprocess/chess_dataset.py --template_type qwen_instruct_with_legal_move
+```
+
+**Download Chess model checkpoint**
+```
+cd searchless_chess/checkpoints
+wget https://storage.googleapis.com/searchless_chess/checkpoints/270M.zip
+unzip 270M.zip
+rm 270M.zip
+```
+
+
+## Countdown task (For debug)
 
 **Data Preparation**
 ```

@@ -394,8 +394,6 @@ class RayGRPOTrainer(object):
         data_source_lst = []
 
         # Lists to collect samples for the table
-        sample_inputs = []
-        sample_outputs = []
         sample_scores = []
 
         for test_data in self.val_dataloader:
@@ -414,7 +412,6 @@ class RayGRPOTrainer(object):
                 self.tokenizer.decode(ids, skip_special_tokens=True)
                 for ids in input_ids
             ]
-            sample_inputs.extend(input_texts)
 
             test_gen_batch = test_batch.pop(
                 batch_keys=["input_ids", "attention_mask", "position_ids"],
@@ -425,7 +422,6 @@ class RayGRPOTrainer(object):
                 "eos_token_id": self.tokenizer.eos_token_id,
                 "pad_token_id": self.tokenizer.pad_token_id,
                 "recompute_log_prob": False,
-                "do_sample": False,
                 "validate": True,
             }
 
@@ -448,16 +444,17 @@ class RayGRPOTrainer(object):
                 self.tokenizer.decode(ids, skip_special_tokens=True)
                 for ids in output_ids
             ]
-            sample_outputs.extend(output_texts)
 
+            # repeat to align with repeated responses in rollout
+            test_batch = test_batch.repeat(
+                repeat_times=self.config.actor_rollout_ref.rollout.validate.num_rollouts_for_eval,
+                interleave=True,
+            )
+            
             test_batch = test_batch.union(test_output_gen_batch)
 
             # evaluate using reward_function
-            reward_tensor = self.val_reward_fn(test_batch)
-
-            # Store scores
-            scores = reward_tensor.sum(-1).cpu().tolist()
-            sample_scores.extend(scores)
+            reward_tensor, reward_metrics = self.val_reward_fn(test_batch)
 
             reward_tensor_lst.append(reward_tensor)
             data_source_lst.append(
@@ -482,7 +479,10 @@ class RayGRPOTrainer(object):
         metric_dict = {}
         for data_source, rewards in data_source_reward.items():
             metric_dict[f"val/test_score/{data_source}"] = np.mean(rewards)
-
+        
+        for key, value in reward_metrics.items():
+            metric_dict[f"val/{key}"] = value
+        
         return metric_dict
 
     def _save_checkpoint(self):
@@ -678,7 +678,8 @@ class RayGRPOTrainer(object):
                             batch = batch.union(reward_tensor)
 
                         # we combine with rule-based rm
-                        reward_tensor = self.train_reward_fn(batch)
+                        reward_tensor, reward_metrics = self.train_reward_fn(batch)
+                        metrics.update(reward_metrics)
                         batch.batch["token_level_scores"] = deepcopy(reward_tensor)
 
                         # compute rewards. apply_kl_penalty to the rewards if available

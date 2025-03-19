@@ -1,0 +1,12 @@
+[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chessLLM/checkpoints/test_chi_square/pearson_chi_squared_grad_retry/latest_checkpointed_iteration.txt
+[stdout] Training from scratch
+[stdout] validation generation end
+[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.324609375820728}"
+[stderr] Training:   0%|          | 0/1000 [00:00<?, ?step/s][stdout] step 1
+[stderr] Training:   0%|          | 1/1000 [01:11<19:46:48, 71.28s/step][stdout] step 2
+[stderr] Training:   0%|          | 2/1000 [02:28<20:45:52, 74.90s/step][stdout] step 3
+[stderr] Training:   0%|          | 3/1000 [03:44<20:49:32, 75.20s/step][stdout] step 4
+[stderr] Training:   0%|          | 4/1000 [04:58<20:41:27, 74.79s/step][stdout] step 5
+[stderr] Training:   0%|          | 5/1000 [06:10<20:21:12, 73.64s/step][stdout] step 6
+[stderr] Training:   1%|          | 6/1000 [07:18<19:50:28, 71.86s/step][stdout] step 7
+[stderr] Training:   1%|          | 6/1000 [07:44<21:23:40, 77.49s/step]

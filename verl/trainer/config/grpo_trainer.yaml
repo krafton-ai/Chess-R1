@@ -43,6 +43,7 @@ actor_rollout_ref:
     override_config: { }
     enable_gradient_checkpointing: True
     use_remove_padding: True
+    trust_remote_code: False
   actor:
     strategy: fsdp
     epochs: 1
@@ -96,6 +97,9 @@ actor_rollout_ref:
     # for hf rollout
     do_sample: True
     n: 4 # > 1 for grpo
+    validate:
+      num_rollouts_for_eval: 5
+      
   ref:
     fsdp_config:
       param_offload: False

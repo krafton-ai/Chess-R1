@@ -63,12 +63,15 @@ Assistant: Let me solve this step by step.
     elif template_type == "qwen-instruct":
         """This works for Qwen Instruct Models"""
         prefix = f"""<|im_start|>system\nYou are a helpful assistant. You first thinks about the reasoning process in the mind and then provides the user with the answer.<|im_end|>\n<|im_start|>user\n Using the numbers {numbers}, create an equation that equals {target}. You can use basic arithmetic operations (+, -, *, /) and each number can only be used once. Show your work in <think> </think> tags. And return the final answer in <answer> </answer> tags, for example <answer> (1 + 2) / 3 </answer>.<|im_end|>\n<|im_start|>assistant\nLet me solve this step by step.\n<think>"""
+    elif template_type == "llama-instruct":
+        """This works for Llama Instruct Models"""
+        prefix = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 16 Mar 2025\n\nYou are a helpful assistant. You first thinks about the reasoning process in the mind and then provides the user with the answer.<|eot_id|><|start_header_id|>user<|end_header_id|>\n Using the numbers {numbers}, create an equation that equals {target}. You can use basic arithmetic operations (+, -, *, /) and each number can only be used once. Show your work in <think> </think> tags. And return the final answer in <answer> </answer> tags, for example <answer> (1 + 2) / 3 </answer>.<|eot_id|><|start_header_id|>assistant<|end_header_id|><|begin_of_text|>Let me solve this step by step.\n<think>"""
     return prefix
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--local_dir", default="./data/countdown")
+    parser.add_argument("--local_dir", default="./data/countdown-llama-instruct-datesys")
     parser.add_argument("--hdfs_dir", default=None)
     parser.add_argument("--num_samples", type=int, default=100000)
     parser.add_argument("--num_operands", type=int, default=6)
@@ -77,14 +80,16 @@ if __name__ == "__main__":
     parser.add_argument("--max_number", type=int, default=100)
     parser.add_argument("--train_size", type=int, default=327680)
     parser.add_argument("--test_size", type=int, default=1024)
-    parser.add_argument("--template_type", type=str, default="base")
+    parser.add_argument("--template_type", type=str, default="llama-instruct")
 
     args = parser.parse_args()
 
     # Modify local_dir if template includes "instruct"
     if "instruct" in args.template_type:
-        if args.local_dir == "./data/countdown":  # Only modify if it's the default
+        if args.local_dir in "./data/countdown":  
             args.local_dir = "./data/countdown-instruct"
+        elif args.local_dir in "./data/countdown-llama":  
+            args.local_dir = "./data/countdown-llama-instruct"
         # If hdfs_dir is provided, modify that too if it contains "countdown"
         if args.hdfs_dir and "countdown" in args.hdfs_dir:
             args.hdfs_dir = args.hdfs_dir.replace("countdown", "countdown-instruct")

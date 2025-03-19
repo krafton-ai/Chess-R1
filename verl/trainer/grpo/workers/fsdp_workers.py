@@ -187,7 +187,7 @@ class ActorRolloutRefWorker(Worker):
         override_model_config,
         use_remove_padding=False,
         enable_gradient_checkpointing=False,
-        trust_remote_code=False,
+        trust_remote_code=True,
         use_liger=False,
         role="actor",
     ):
@@ -422,6 +422,7 @@ class ActorRolloutRefWorker(Worker):
                 config=self.config.rollout,
                 tokenizer=self.tokenizer,
                 model_hf_config=self.actor_model_config,
+                model_hf_generation_config=self.generation_config
             )
             log_gpu_memory_usage("After building vllm rollout", logger=None)
             if torch.distributed.get_world_size() == 1:
@@ -441,7 +442,7 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.ONE_TO_ALL)
     def init_model(self):
-        from verl.workers.actor import DataParallelPPOActor
+        from verl.trainer.grpo.workers.actor import DataParallelGRPOActor
 
         # This is used to import external_lib into the huggingface systems
         import_external_libs(self.config.model.get("external_lib", None))
@@ -494,7 +495,7 @@ class ActorRolloutRefWorker(Worker):
             OmegaConf.set_struct(self.config.actor, True)
             with open_dict(self.config.actor):
                 self.config.actor.use_remove_padding = use_remove_padding
-            self.actor = DataParallelPPOActor(
+            self.actor = DataParallelGRPOActor(
                 config=self.config.actor,
                 actor_module=self.actor_module_fsdp,
                 actor_optimizer=self.actor_optimizer,
@@ -517,7 +518,7 @@ class ActorRolloutRefWorker(Worker):
             OmegaConf.set_struct(self.config.ref, True)
             with open_dict(self.config.ref):
                 self.config.ref.use_remove_padding = use_remove_padding
-            self.ref_policy = DataParallelPPOActor(
+            self.ref_policy = DataParallelGRPOActor(
                 config=self.config.ref, actor_module=self.ref_module_fsdp
             )
 
