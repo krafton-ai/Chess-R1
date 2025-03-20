@@ -88,8 +88,8 @@ def main_task(config, compute_score=None):
     # - for code related prompt, we send to a sandbox if there are test cases
     from verl.trainer.grpo.reward_manager import RewardManager
 
-    train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=0)
-    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=0)
+    train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3)
+    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3)
 
     # define reward model class as ray worker
     if config.reward_model.enable:

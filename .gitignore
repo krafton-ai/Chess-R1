@@ -3,10 +3,11 @@
 **/wget-log
 **/_build/
 **/*.ckpt
-**/outputs
 **/*.tar.gz
 **/playground
 **/wandb
+**/*.safetensors
+**/results.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

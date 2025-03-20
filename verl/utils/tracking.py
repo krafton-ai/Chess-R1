@@ -16,6 +16,7 @@ A unified tracking interface that supports logging data to different backend
 """
 import dataclasses
 import datetime
+import json
 from enum import Enum
 from functools import partial
 from pathlib import Path
@@ -51,7 +52,7 @@ class Tracking(object):
 
         # Add date information to log directory
         current_date = datetime.datetime.now()
-        date_str = current_date.strftime("%m%d")
+        date_str = current_date.strftime("%m-%d-%H-%M")
 
         if "tracking" in default_backend or "wandb" in default_backend:
             import wandb
@@ -77,8 +78,8 @@ class Tracking(object):
 
                 # Create log directory using project and experiment names
                 log_dir = os.path.join(
-                    "tb_logs", user_name, date_str, group_name, experiment_name
-                )  # tb_logs/DY/0305/gamma_ablation/exp1
+                    "outputs", user_name, group_name, experiment_name
+                )
                 os.makedirs(log_dir, exist_ok=True)
 
                 writer = SummaryWriter(log_dir=log_dir)
@@ -91,7 +92,9 @@ class Tracking(object):
                         ),
                         sep="/",
                     )
-                    writer.add_text("config", str(flat_config))
+                    #writer.add_text("config", str(flat_config))
+                    pretty_config = json.dumps(flat_config, indent=4)  # Format with indentation
+                    writer.add_text("config", f"```\n{pretty_config}\n```")  # Wrap in code block
 
                 self.logger["tensorboard"] = _TensorboardLoggingAdapter(writer)
 
@@ -193,6 +196,8 @@ class _TensorboardLoggingAdapter:
         for key, value in data.items():
             if isinstance(value, (int, float)):
                 self.writer.add_scalar(key, value, step)
+            elif isinstance(value, str):
+                self.writer.add_text(key, value, step)
             elif isinstance(value, list) and all(
                 isinstance(x, (int, float)) for x in value
             ):

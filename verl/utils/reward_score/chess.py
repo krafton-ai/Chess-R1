@@ -151,7 +151,7 @@ def validate_chess_move(
     """
     # Check UCI notation format
     if not re.match(r'^[a-h][1-8][a-h][1-8](?:[qrbn])?$', move):
-        print(f"Move {move} does not follow UCI notation.")
+        #print(f"Move {move} does not follow UCI notation.")
         return strong_penalty_reward, logs  # Strong penalty
     else:
         logs['legal_uci'] = 1
@@ -160,7 +160,7 @@ def validate_chess_move(
     try:
         chess_move = board.parse_uci(move)
     except ValueError:
-        print(f"Move {move} cannot be parsed, possibly due to moving a non-existent piece.")
+        #print(f"Move {move} cannot be parsed, possibly due to moving a non-existent piece.")
         return strong_penalty_reward, logs  # Strong penalty
 
     legal_moves = sorted(board.legal_moves, key=lambda x: MOVE_TO_ACTION_DICT[x.uci()])
@@ -171,11 +171,11 @@ def validate_chess_move(
         logs['legal_move'] = 1
 
     if move == optimal_move:
-        print(f"Move {move} is optimal!")
+        #print(f"Move {move} is optimal!")
         logs['optimal'] = 1
         return success_reward, logs  # Correct move case
     else:
-        print(f"Move {move} is legal but not optimal.")
+        #print(f"Move {move} is legal but not optimal.")
         return weak_penalty_reward, logs  # Weak penalty
 
 def compute_score(solution_str: str, 
@@ -228,7 +228,7 @@ def compute_score(solution_str: str,
 
     total_score = format_score + answer_score
     do_print = random.randint(1, 64) == 1
-    # do_print = True
+    do_print = False
     if do_print:
         print("\n" + "="*80)
         print(" Processing New Sample ".center(80, '='))

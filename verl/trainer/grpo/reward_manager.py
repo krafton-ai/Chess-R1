@@ -50,6 +50,8 @@ class RewardManager:
 
         already_print_data_sources = {}
         agg_reward_logs = {'format': 0, 'legal_uci': 0, 'legal_move': 0, 'optimal': 0}
+        example_texts = []
+
         for i in range(len(data)):
             data_item = data[i]  # DataProtoItem
 
@@ -92,11 +94,14 @@ class RewardManager:
 
             if already_print_data_sources[data_source] < self.num_examine:
                 already_print_data_sources[data_source] += 1
-                # print(sequences_str)
+                example_texts.append(sequences_str)
         
         # normalize aggregate logging metrics
         normalized_agg_reward_logs = {}
         for key in agg_reward_logs.keys():
             normalized_agg_reward_logs[f'reward/{key}'] = agg_reward_logs[key] / len(data)
+
+        # add a single sequence_str as an example
+        normalized_agg_reward_logs[f'generation/text'] = "\n\n".join(example_texts)
         
         return reward_tensor, normalized_agg_reward_logs

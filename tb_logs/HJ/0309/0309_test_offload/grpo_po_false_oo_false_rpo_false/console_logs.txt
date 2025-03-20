@@ -1,2 +1,0 @@
-[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/0309_test_offload/grpo_po_false_oo_false_rpo_false/latest_checkpointed_iteration.txt
-[stdout] Training from scratch

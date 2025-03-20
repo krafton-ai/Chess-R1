@@ -1,0 +1,53 @@
+{
+    "configuration": {
+        "task": {
+            "name": "gpqa_diamond",
+            "config": {
+                "handler": "gpqa_diamond",
+                "dataset_path": "Idavidrein/gpqa",
+                "dataset_subset": "gpqa_diamond",
+                "dataset_split": "train",
+                "dataset_kwargs": {},
+                "question_key": "Question",
+                "answer_key": "Answer",
+                "templating_parameters": {
+                    "template": "Return your final response within \\boxed{{}} and only include the letter choice (A, B, C, or D) as your final response. {prompt}"
+                },
+                "preprocess_config": {}
+            },
+            "start": 0,
+            "end": -1
+        },
+        "model": {
+            "name": "Qwen/Qwen2.5-7B-Instruct",
+            "config": {
+                "model_id": "Qwen/Qwen2.5-7B-Instruct",
+                "name": "Qwen2.5-7B-Instruct",
+                "system_prompt": "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
+                "user_template": null,
+                "assistant_prefill": null
+            }
+        },
+        "backend": {
+            "name": "vllm",
+            "backend_args": {
+                "tensor_parallel_size": 1,
+                "gpu_memory_utilization": 0.8
+            }
+        },
+        "sampling_params": {
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "max_tokens": 2048,
+            "top_k": 20,
+            "repetition_penalty": 1.05,
+            "n": 1
+        }
+    },
+    "total_completion_tokens": 1684,
+    "avg_completion_tokens": 8.505,
+    "total_prompt_tokens": 55025,
+    "avg_prompt_tokens": 277.904,
+    "accuracy": 0.3131,
+    "pass_at_k": null
+}

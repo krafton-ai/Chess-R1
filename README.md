@@ -45,11 +45,14 @@ conda activate chess_llm
 
 ## Chess task
 
-**Data Preparation**
+### Data Preparation
 ```
 cd searchless_chess/data
 wget https://storage.googleapis.com/searchless_chess/data/eco_openings.pgn
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
+```
+
+```
 mkdir test
 cd test
 wget https://storage.googleapis.com/searchless_chess/data/test/behavioral_cloning_data.bag
@@ -58,9 +61,11 @@ cd ..
 mkdir train
 cd train
 wget https://storage.googleapis.com/searchless_chess/data/train/behavioral_cloning_data.bag
-cd ../../..
+```
 
-# For instruct models
+### Preprocessing
+```
+cd ../../..
 python ./examples/data_preprocess/chess_dataset.py --template_type qwen_instruct_with_legal_move
 ```
 
@@ -72,10 +77,9 @@ unzip 270M.zip
 rm 270M.zip
 ```
 
-
 ## Countdown task (For debug)
 
-**Data Preparation**
+### Data Preparation
 ```
 # For Base models
 python ./examples/data_preprocess/countdown.py
@@ -84,16 +88,16 @@ python ./examples/data_preprocess/countdown.py
 python ./examples/data_preprocess/countdown.py --template qwen-instruct
 ```
 
-### Run Training
+## Enjoy
 
+### Training
 ```
-bash scripts/test_grpo.sh
+bash scripts/test_grpo_chess.sh
 ```
 
-### Run Evaluation
-
+### Evaluation
 ```
-skythought evaluate --model Qwen/Qwen2.5-7B-Instruct --task gsm8k --backend vllm --backend-args tensor_parallel_size=1,gpu_memory_utilization=0.8 --sampling-params max_tokens=2048,temperature=0.7,top_p=0.8,top_k=20,repetition_penalty=1.05 --n 1
+bash scripts/test_eval.sh
 ```
 
 ## Acknowledge

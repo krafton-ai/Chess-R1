@@ -172,7 +172,7 @@ def get_output_dir(
 ) -> Path:
     parameter_hash = get_deterministic_hash(run_config)
 
-    return Path(result_dir) / f"{model_id.replace('/', '_')}_{task}_{parameter_hash}"
+    return Path(result_dir) / f"{task}_{parameter_hash}"
 
 
 @app.command("evaluate", help="Evaluate a model on a task")
@@ -250,6 +250,9 @@ def evaluate(
             help="Batch size for inference. only applicable for the vllm backend."
         ),
     ] = 64,
+    save_result: Annotated[
+        bool, typer.Option(help="Whether to save result.json")
+    ] = False
 ):
     set_seed(seed)
 
@@ -340,6 +343,7 @@ def evaluate(
         end,
         run_config_dict,
         batch_size=batch_size,
+        save_result=save_result, 
     )
 
 
@@ -428,6 +432,9 @@ def generate(
     resume_from: Annotated[
         str, typer.Option(help="Resume from a previous run.")
     ] = None,
+    save_result: Annotated[
+        bool, typer.Option(help="Whether to save result.json")
+    ] = False
 ):
     set_seed(seed)
 
@@ -524,6 +531,7 @@ def generate(
         run_config_dict,
         resume_from=resume_from,
         batch_size=batch_size,
+        save_result=save_result, 
     )
 
 

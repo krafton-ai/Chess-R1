@@ -1,8 +1,0 @@
-[stdout] Checkpoint tracker file does not exist: %s [stdout] /home/jovyan/chess_llm/checkpoints/0309_test_offload/grpo_po_false_oo_true/latest_checkpointed_iteration.txt
-[stdout] Training from scratch
-[stdout] validation generation end
-[stdout] "Initial validation metrics: {'val/test_score/countdown': 0.16357421963039087}"
-[stdout] epoch 0, step 1
-[stdout] epoch 0, step 2
-[stdout] epoch 0, step 3
-[stdout] epoch 0, step 4

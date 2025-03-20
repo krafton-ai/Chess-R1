@@ -186,6 +186,7 @@ def inference(
     elif backend == Backend.VLLM:
         batch_size = kwargs.get("batch_size", 1)
         engine_kwargs = copy.deepcopy(backend_params.to_dict())
+        
         engine_kwargs["model"] = model_config.model_id
         llm = LLM(**engine_kwargs)
 
@@ -398,6 +399,7 @@ def generate_and_score(
     start: int,
     end: int,
     run_config_dict: dict,
+    save_result: bool = False,
     **kwargs,
 ):
     result_file = output_dir / RESULTS_FILENAME
@@ -448,10 +450,14 @@ def generate_and_score(
         pass_at_k=pass_at_k_metrics,
     )
 
+    if save_result:
+        save_results(result_file, id_to_results)
+        logger.info(f"Saved results to {result_file}")
+    else:
+        logger.info("Skipping saving results.json as per option.")
+
     save_summary(summary_file, summary_data)
-    save_results(result_file, id_to_results)
-    logger.info(f"Saved results to {result_file}")
-    logger.info(f"Summary saved to {summary_file}")
+    logger.info(f"Saved summary to {summary_file}")
 
 
 def generate_and_save(
@@ -465,6 +471,7 @@ def generate_and_save(
     end: int,
     run_config_dict: dict,
     resume_from: Optional[os.PathLike] = None,
+    save_result: bool = False,
     **kwargs,
 ):
     if resume_from is not None:
@@ -510,12 +517,14 @@ def generate_and_save(
         ),
     )
 
+    if save_result:
+        save_results(result_file, id_to_results)
+        logger.info(f"Saved results to {result_file}")
+    else:
+        logger.info("Skipping saving results.json as per option.")
+
     save_summary(summary_file, summary_data)
-    save_results(result_file, id_to_results)
-
-    logger.info(f"Saved results to {result_file}")
     logger.info(f"Saved summary to {summary_file}")
-
 
 def score_results(
     handler: TaskHandler,

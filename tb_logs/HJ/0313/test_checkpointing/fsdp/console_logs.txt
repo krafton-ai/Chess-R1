@@ -1,3 +1,0 @@
-[stdout] Found checkpoint: %s [stdout] /home/jovyan/chess_llm/checkpoints/test_checkpointing/fsdp/global_step_3
-[stdout] Setting global step to 3
-[stdout] Resuming from /home/jovyan/chess_llm/checkpoints/test_checkpointing/fsdp/global_step_3
