@@ -18,7 +18,8 @@ export EXPERIMENT_NAME="test"
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
 BASE_MODEL_NAME=$(basename "$BASE_MODEL")
-export EXPERIMENT_NAME="${timestamp}_${DATA_NAME}_${BASE_MODEL_NAME}_${EXPERIMENT_NAME}"
+export EXPERIMENT_NAME="${timestamp}_${EXPERIMENT_NAME}_${DATA_NAME}_${BASE_MODEL_NAME}"
+export LOG_DIR="outputs/${USER_NAME}/${GROUP_NAME}/${EXPERIMENT_NAME}"
 export CHECKPOINT_DIR="outputs/${USER_NAME}/${GROUP_NAME}/${EXPERIMENT_NAME}/checkpoint"
 
 trainer_args=" \
@@ -84,4 +85,4 @@ TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $
 ##########################
 # Train Model
 ray stop --force && ray start --head --include-dashboard=True
-python -m verl.trainer.main_grpo $TRAIN_ARGS 2>&1 | tee verl_demo.log
+python -m verl.trainer.main_grpo $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
