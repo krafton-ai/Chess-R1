@@ -14,7 +14,7 @@
 # from . import gsm8k, math, prime_math, prime_code
 import torch
 from verl import DataProto
-from verl.utils.reward_score import gsm8k, math, multiply, countdown, chess
+from verl.utils.reward_score import gsm8k, math, multiply, countdown, chess, lichess
 
 
 def _select_rm_score_fn(data_source):
@@ -26,8 +26,10 @@ def _select_rm_score_fn(data_source):
         return multiply.compute_score
     elif "countdown" in data_source:
         return countdown.compute_score
-    elif "chess" in data_source:
+    elif "chess_fen" in data_source:
         return chess.compute_score
+    elif "lichess" in data_source:
+        return lichess.compute_score
     else:
         raise NotImplementedError
 

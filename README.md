@@ -48,25 +48,26 @@ conda activate chess_llm
 ### Data Preparation
 ```
 cd searchless_chess/data
-wget https://storage.googleapis.com/searchless_chess/data/eco_openings.pgn
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
+wget https://database.lichess.org/lichess_db_puzzle.csv.zst
+unzst lilchess_db_puzzle.csv.zst
 ```
 
 ```
-mkdir test
-cd test
-wget https://storage.googleapis.com/searchless_chess/data/test/behavioral_cloning_data.bag
-cd ..
-
+cd searchless_chess/data
 mkdir train
-cd train
-wget https://storage.googleapis.com/searchless_chess/data/train/behavioral_cloning_data.bag
+python extract_lichess.py --save_path ./train/lichess_20k.csv --data_path ./lilchess_db_puzzle.csv --data_size 20000
+
+mkdir test
+python extract_lichess.py --save_path ./test/lichess_10k.csv --data_path ./puzzles.csv --data_size 10000
+
+python extract_lichess.py --save_path ./test/lichess_2k.csv --data_path ./puzzles.csv --data_size 2000
 ```
 
 ### Preprocessing
 ```
-cd ../../..
-python ./examples/data_preprocess/chess_dataset.py --template_type qwen_instruct_with_legal_move
+cd ../..
+python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_all
 ```
 
 **Download Chess model checkpoint**
@@ -92,7 +93,7 @@ python ./examples/data_preprocess/countdown.py --template qwen-instruct
 
 ### Training
 ```
-bash scripts/test_grpo_chess.sh
+bash scripts/train_qwen7b_lichess_grpo.sh
 ```
 
 ### Evaluation

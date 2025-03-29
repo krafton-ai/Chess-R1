@@ -395,7 +395,6 @@ class RayGRPOTrainer(object):
 
         # Lists to collect samples for the table
         sample_scores = []
-
         for test_data in self.val_dataloader:
             test_batch = DataProto.from_single_dict(test_data)
 
@@ -436,7 +435,7 @@ class RayGRPOTrainer(object):
             test_output_gen_batch = unpad_dataproto(
                 test_output_gen_batch_padded, pad_size=pad_size
             )
-            print("validation generation end")
+            print(f"validation generation end")
 
             # Store generated outputs
             output_ids = test_output_gen_batch.batch["responses"]
@@ -601,6 +600,9 @@ class RayGRPOTrainer(object):
         pprint(f"Initial validation metrics: {val_metrics}")
         logger.log(data=val_metrics, step=self.global_steps)
         self.global_steps += 1
+        
+        if self.total_training_steps == 0:
+            return
 
         # Create iterator for dataloader to manage iteration manually
         dataloader_iter = iter(self.train_dataloader)

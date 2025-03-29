@@ -98,7 +98,7 @@ actor_rollout_ref:
     do_sample: True
     n: 4 # > 1 for grpo
     validate:
-      num_rollouts_for_eval: 5
+      num_rollouts_for_eval: 1
       
   ref:
     fsdp_config:
