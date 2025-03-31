@@ -35,9 +35,6 @@ sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/ch
 cd verl/third_party/SkyThought
 pip install -e .
 
-# chess dataset
-git clone https://github.com/google-deepmind/searchless_chess.git
-
 # JAX
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 

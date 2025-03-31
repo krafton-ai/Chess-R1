@@ -127,5 +127,6 @@ core
 *.log
 
 # different repo
-searchless_chess/
+searchless_chess/checkpoints
+searchless_chess/data
 chess_dataset/
