@@ -335,10 +335,14 @@ def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange)
     pg_losses = -advantages * ratio
     pg_losses2 = -advantages * torch.clamp(ratio, 1.0 - cliprange, 1.0 + cliprange)
 
-    pg_loss = verl_F.masked_mean(torch.max(pg_losses, pg_losses2), eos_mask)
+    pg_loss = verl_F.masked_mean(torch.max(pg_losses, pg_losses2), eos_mask) # selecting the min out of with clip and without clip
     # torch.gt : greater than
-    pg_clipfrac = verl_F.masked_mean(torch.gt(pg_losses2, pg_losses).float(), eos_mask)
-    return pg_loss, pg_clipfrac, ppo_kl, ppo_ratio
+    pg_clipfrac = verl_F.masked_mean(torch.gt(pg_losses2, pg_losses).float(), eos_mask) # the ratio of selecting clipped terms for pg_loss. For now, its extremely small...
+    
+    # average probability for each generated token
+    avg_token_probs = verl_F.masked_mean(torch.exp(log_prob), eos_mask)
+
+    return pg_loss, pg_clipfrac, ppo_kl, ppo_ratio, avg_token_probs
 
 
 def compute_entropy_loss(logits, eos_mask):

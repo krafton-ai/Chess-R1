@@ -35,7 +35,7 @@ def compute_data_metrics(batch):
     prompt_length = response_info["prompt_length"]
     response_length = response_info["response_length"]
 
-    success_traj_idx = sequence_score == 1.0
+    success_traj_idx = batch.batch["correct_sequences"] == 1.0
     success_response_length = response_length[success_traj_idx]
     if len(success_response_length) == 0 :
         success_response_length = torch.tensor([0.0]) # no success
@@ -74,7 +74,7 @@ def compute_data_metrics(batch):
         "response_length/failure_mean": torch.mean(failure_response_length).detach().item(),
         "response_length/failure_max": torch.max(failure_response_length).detach().item(),
         "response_length/failure_min": torch.min(failure_response_length).detach().item(),
-        "response_length/clip_ratio": torch.mean(
+        "response_length/max_gen_clip_ratio": torch.mean(
             torch.eq(response_length, max_response_length).float()
         )
         .detach()

@@ -16,13 +16,15 @@ import os
 import ray
 import hydra
 from verl.trainer.grpo.ray_trainer import RayGRPOTrainer
+from verl.trainer.grpo.reward_manager import RewardManager
+
 
 @hydra.main(config_path="config", config_name="grpo_trainer", version_base=None)
 def main(config):
     run_grpo(config)
 
-
 def run_grpo(config, compute_score=None):
+    
     if not ray.is_initialized():
         # this is for local ray cluster
         ray.init(
@@ -30,19 +32,20 @@ def run_grpo(config, compute_score=None):
                 "env_vars": {
                     "TOKENIZERS_PARALLELISM": "true", 
                     "NCCL_DEBUG": "WARN",
-                    # Make sure VLLM_ATTENTION_BACKEND is set in the Ray runtime environment
                     "VLLM_ATTENTION_BACKEND": os.environ.get("VLLM_ATTENTION_BACKEND", "XFORMERS"),
-                    # Set to "1" to allow debugging
                     "RAY_DEBUG": "1"
                 }
             }
         )
-    ray.get(main_task.remote(config, compute_score))
+    
+    # Pass the nlp_ref to the main task instead of the actual nlp object
+    # ray.get(main_task.remote(config, compute_score))
+    main_task(config, compute_score)
 
 
-@ray.remote(num_cpus=1)  # please make sure main_task is not scheduled on head
+# main_task doesn't have access to any gpus
+# @ray.remote(num_cpus=1)  # please make sure main_task is not scheduled on head
 def main_task(config, compute_score=None):
-
     # instantiate configuration
     from pprint import pprint
     from omegaconf import OmegaConf
@@ -83,23 +86,9 @@ def main_task(config, compute_score=None):
     }
 
     # instantiate reward function
-    # - for model-based rm, we call a reward model
     # - for rule-based rm, we directly call a reward score
-    # - for code related prompt, we send to a sandbox if there are test cases
-    from verl.trainer.grpo.reward_manager import RewardManager
-
-    train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3)
-    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3)
-
-    # define reward model class as ray worker
-    if config.reward_model.enable:
-        if config.reward_model.strategy == "fsdp":
-            from verl.trainer.grpo.fsdp_workers import RewardModelWorker
-
-            role_worker_mapping[Role.RewardModel] = ray.remote(RewardModelWorker)
-            mapping[Role.RewardModel] = global_pool_id
-        else:
-            raise NotImplementedError
+    train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
 
     resource_pool_manager = ResourcePoolManager(
         resource_pool_spec={

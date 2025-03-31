@@ -22,6 +22,11 @@ pip install -e .
 # flash attention 2
 pip3 install flash-attn --no-build-isolation
 
+# spacy_fastlang
+pip install spacy_fastlang
+pip install cupy
+python -m spacy download en_core_web_lg # en_core_web_md
+
 # install tensorboard (allow host view in kubeflow)
 pip install tensorboard
 sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/chess_llm/lib/python3.10/site-packages/tensorboard/plugins/core/core_plugin.py
@@ -32,6 +37,9 @@ pip install -e .
 
 # chess dataset
 git clone https://github.com/google-deepmind/searchless_chess.git
+
+# JAX
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # utilities
 pip install -r requirements.txt

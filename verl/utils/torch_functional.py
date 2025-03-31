@@ -121,6 +121,8 @@ def entropy_from_logits(logits: torch.Tensor):
 
 
 def masked_sum(values, mask, axis=None):
+    #TODO: https://dapo-sia.github.io/static/pdf/dapo_paper.pdf
+    # keep in mind that we have to track the total number of tokens for dividing the loss
     """Compute mean of tensor with a masked values."""
     return (values * mask).sum(axis=axis)
 

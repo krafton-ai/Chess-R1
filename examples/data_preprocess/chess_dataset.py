@@ -68,6 +68,40 @@ Current FEN string: {fen}
 <|im_end|>
 <|im_start|>assistant\nLet me solve this step by step.\n<think>
 """
+    elif template_type == 'qwen_instruct_with_legal_move_answer_only':
+        prefix = f"""\
+<|im_start|>system
+You are a helpful assistant who plays chess professionally.
+The assistant first thinks through the reasoning process internally and then provides the user with the best move.
+The answer must be enclosed within <answer> </answer> tags, respectively.
+The answer must be in UCI notation, strictly using only the starting and ending square (e.g., e2e4, h7h6). No piece names, move types, or annotations should be included.
+Now, the user provides a FEN string and a list of legal moves for the given board.
+After analyzing the position, clearly state the best move in UCI notation within <answer> </answer> tags. i.e., <answer> e2e4 </answer>
+<|im_end|>
+<|im_start|>user
+Current FEN string: {fen}
+{legal_moves_text}
+<|im_end|>
+<|im_start|>assistant\n<answer>
+"""
+    elif template_type == 'qwen_instruct_with_legal_move_eng_prompt':
+        prefix = f"""\
+<|im_start|>system
+You are a helpful assistant who plays chess professionally.
+The assistant first thinks through the reasoning process internally and then provides the user with the best move.
+The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
+The reasoning process should describe how you analyze the position and decide on the best move.
+The answer must be in UCI notation, strictly using only the starting and ending square (e.g., e2e4, h7h6). No piece names, move types, or annotations should be included.
+Now, the user provides a FEN string and a list of legal moves for the given board.
+After analyzing the position, clearly state the best move in UCI notation within <answer> </answer> tags. i.e., <answer> e2e4 </answer>
+The assistant's response must be provided exclusively in English.
+<|im_end|>
+<|im_start|>user
+Current FEN string: {fen}
+{legal_moves_text}
+<|im_end|>
+<|im_start|>assistant\nLet me solve this step by step.\n<think>
+"""
     elif template_type == 'llama_instruct_wo_legal_move':
         prefix = f"""\
 <|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 26 Jul 2024\n\n
@@ -115,17 +149,10 @@ if __name__ == '__main__':
     # Modify save_dir to include template type
     args.save_dir = args.save_dir + f"_{args.template_type}" + f"_{args.train_size}"+ f"_{args.test_size}"
     
-    data_source = f'chess_fen_{args.data_type}'
+    data_source = f'answer_chess_fen_{args.data_type}'
     train_data_path = f"{args.data_path}/train/{args.data_type}.bag"
     TRAIN_SIZE = args.train_size
     TEST_SIZE = args.test_size 
-
-    # Load custom bagz dataset
-    # def gen_from_bagz(path):
-    #     reader = bagz.BagReader(path)
-    #     for data in reader:
-    #         fen, solution = constants.CODERS['behavioral_cloning'].decode(data)
-    #         yield {'fen': fen, 'solution': solution}
 
     def gen_from_bagz(path, limit=400000):  # Adjust limit as needed
         reader = bagz.BagReader(path)

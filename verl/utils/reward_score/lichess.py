@@ -1,11 +1,16 @@
 import re
 import random
 import chess
-from typing import Dict, Tuple, Optional, Tuple
+import time
+import torch
+import numpy as np
+
+from typing import Dict, Tuple, Optional
+from searchless_chess.src.engines import engine
 
 
 def extract_solution(solution_str: str, logs: dict) -> Tuple[Optional[str], str, dict]:
-    """Extracts the final answer from the model's response string.
+    """Extract the final answer from the model's response string by isolating the assistant's output.
     
     Args:
         solution_str: Raw response string from the language model
@@ -14,14 +19,17 @@ def extract_solution(solution_str: str, logs: dict) -> Tuple[Optional[str], str,
     Returns:
         Tuple containing (extracted_answer, processed_string, logs)
     """
-    # Split response to isolate assistant output
-    if "Assistant:" in solution_str:  # base models
-        processed_str = solution_str.split("Assistant:", 1)[1]
-    elif "<|start_header_id|>assistant<|end_header_id|><|begin_of_text|>" in solution_str:  # Llama instruct
-        processed_str = solution_str.split("<|start_header_id|>assistant<|end_header_id|><|begin_of_text|>", 1)[1]
-    elif "<|im_start|>assistant" in solution_str:  # Qwen instruct
-        processed_str = solution_str.split("<|im_start|>assistant", 1)[1]
-    else:
+    header_markers = [
+        "Assistant:",
+        "<|start_header_id|>assistant<|end_header_id|><|begin_of_text|>",
+        "<|im_start|>assistant"
+    ]
+    processed_str = None
+    for marker in header_markers:
+        if marker in solution_str:
+            processed_str = solution_str.split(marker, 1)[1]
+            break
+    if processed_str is None:
         print("[Error] Failed to locate model response header")
         return None, solution_str, logs
 
@@ -76,15 +84,30 @@ def validate_response_structure(processed_str: str, logs: dict) -> Tuple[bool, d
     
     return validation_passed, logs
 
-def validate_chess_move(
+def _update_optimal_logs(num_legal_moves: int, logs: dict) -> None:
+    """
+    Updates logs with counters based on the number of legal moves.
+    """
+    if num_legal_moves <= 10:
+        logs['optimal/1_10_moves'] = 1
+    elif num_legal_moves <= 20:
+        logs['optimal/11_20_moves'] = 1
+    elif num_legal_moves <= 30:
+        logs['optimal/21_30_moves'] = 1
+    elif num_legal_moves <= 40:
+        logs['optimal/31_40_moves'] = 1
+    else:
+        logs['optimal/over40_moves'] = 1
+    logs['optimal'] = 1
+
+    return logs
+
+def validate_chess_move_qvalue(
     fen: str,
     move: str,
-    optimal_move: str,
+    chess_model_qvalues: np.array,
     legal_moves: Tuple[str],
     logs: dict,
-    success_reward: float = 1.0,
-    weak_penalty_reward: float = -1.0,
-    strong_penalty_reward: float = -2.0,
 ) -> Tuple[float, dict]:
     """
     Validates a chess move for a given FEN string and assigns a score based on the validation rules.
@@ -92,56 +115,95 @@ def validate_chess_move(
     Args:
         fen (str): The FEN string representing the board state.
         move (str): The move in SAN notation to validate.
-        optimal_move (str): The optimal move in SAN notation.
+        chess_model_qvalues (np.array): Numpy array with qvalues for each possible move
         legal_moves (List[str]): The legal moves in SAN notation.
         logs (dict): Dictionary to store logging metrics.
-        success_reward (float): Reward for a correct move.
-        weak_penalty_reward (float): Reward for a valid but non-optimal move.
-        strong_penalty_reward (float): Penalty for an invalid move.
         
     Returns:
-        Tuple containing (score, logs)
+        Tuple containing (use_answer_reward, qvalue_reward, logs)
     """
     board = chess.Board(fen)
- 
+    use_answer_reward = False
+
     # strong penalty for
     # 1. not following san format
     # 2. following san format but illegal move
     try:
-        chess_move = board.parse_san(move)
+        move_uci  = board.parse_san(move).uci()
     except ValueError:
-        return strong_penalty_reward, logs
+        return use_answer_reward, 0.0, logs
+    
     if move not in legal_moves:
-        return strong_penalty_reward, logs
+        return use_answer_reward, 0.0, logs
     else:
         logs['legal_move'] = 1
 
-    # weak penalty for not optimal move
-    # rewarding for optimal move
-    if move != optimal_move:
-        return weak_penalty_reward, logs
+    # Obtain legal moves in the order used by the engine.
+    legal_moves_ordered = [m.uci() for m in engine.get_ordered_legal_moves(board)]
+    selected_index = legal_moves_ordered.index(move_uci)
+    move_qvalue = chess_model_qvalues[selected_index] # qvalue of my selected move
+    logs['q_value'] = move_qvalue
+    
+    sorted_win_indices = np.argsort(chess_model_qvalues)[::-1]
+    optimal_move = legal_moves_ordered[sorted_win_indices[0]] # optimal move for current board
+    if move_uci == optimal_move:
+        use_answer_reward = True
+        logs = _update_optimal_logs(len(legal_moves), logs)
+
+    # compute regret
+    optimal_move_qvalue = chess_model_qvalues[sorted_win_indices[0]] # qvalue of optimal move for current board
+    logs['optimal_q_value_gap'] = move_qvalue - optimal_move_qvalue
+
+    # the rank of our selected move
+    move_rank = int(np.where(sorted_win_indices == selected_index)[0][0]) + 1 
+    # Normalizes the rank into a score between 0 and 1, where 1 means we've done well, and 0 means we've done really bad
+    logs['normalized_rank'] = (chess_model_qvalues.shape[0] - move_rank)/chess_model_qvalues.shape[0]
+    
+    return use_answer_reward, move_qvalue, logs
+
+def validate_english_text(text: str, lg_detector: torch.nn.Module, logs: dict, threshold: float = 0.9) -> Tuple[float, dict]:
+    """
+    Validates that the generated text contains only ASCII characters.
+    
+    Args:
+        text (str): The generated text.
+        lg_detector (torch.nn.Module): Pytorch model which detects the language of the given text
+        logs (dict): Dictionary to store logging metrics.
+        threshold (float): Threshold for deciding whether the current text is english or not
+        
+    Returns:
+        Tuple containing (use_english_reward, logs)
+    """
+    use_english_reward = False
+
+    # Process the text
+    with torch.inference_mode():
+        doc = lg_detector(text)
+        
+    # The language detector returns a dictionary with keys 'language' and 'score'
+    detected_lang = doc._.language
+    score = doc._.language_score
+
+    if detected_lang == "en" and score >= threshold:
+        use_english_reward = True
     else:
-        logs['optimal'] = 1
-        return success_reward, logs
+        use_english_reward = False
+    logs['english'] = use_english_reward
+
+    return use_english_reward, logs
 
 def compute_score(
     solution_str: str,
     ground_truth_dict: Dict[str, str],
+    lg_detector: torch.nn.Module,
+    chess_model_qvalues: np.array,
     format_reward: float = 0.1,
-    answer_reward: float = 2.0,
-    weak_penalty_reward: float = 0.0,
-    strong_penalty_reward: float = -2.0
+    english_reward: float = 0.1,
+    answer_reward: float = 1.0,
+    qvalue_reward_scaler: float = 1.0,
 ) -> float:
-    """Computes comprehensive score for model response.
-    
-    Args:
-        solution_str: Raw model response string.
-        ground_truth_dict: Dictionary containing ground truth data.
-        format_reward: Points awarded for correct format.
-        answer_reward: Points awarded for a correct answer.
-        
-    Returns:
-        Total score (sum of format and answer rewards)
+    """
+    Computes comprehensive score for model response.
     """
 
     # Parse ground truth data
@@ -150,32 +212,46 @@ def compute_score(
     legal_moves_san = ground_truth_dict['legal_moves_san']
 
     # Initialize log metrics
-    logs = {'format': 0, 'legal_move': 0, 'optimal': 0}
+    logs = {'format': 0, 'legal_move': 0, 'english': 0, 
+            'optimal': 0, 'optimal/1_10_moves': 0, 'optimal/11_20_moves': 0, 
+            'optimal/21_30_moves': 0, 'optimal/31_40_moves': 0, 'optimal/over40_moves': 0}
 
     # Extract model answer (pass logs to the function)
     answer_text, processed_str, logs = extract_solution(solution_str, logs)
     
     # Validate response structure
     format_correct, logs = validate_response_structure(processed_str, logs)
-    format_score = format_reward if format_correct else strong_penalty_reward
+    use_format_reward = True if format_correct else False
 
-    # Validate answer content
-    answer_score = 0
+    # Validate English text
+    use_english_reward = False
+    if answer_text:
+        use_english_reward, logs = validate_english_text(
+            processed_str, 
+            lg_detector,
+            logs,
+            threshold=0.9,
+        )
+
     try:
         if format_correct and answer_text:
-            answer_score, logs = validate_chess_move(
-                fen=board_fen,
-                move=answer_text,
-                optimal_move=next_move_san,
-                legal_moves=legal_moves_san,
-                logs=logs,
-                success_reward=answer_reward,
-                weak_penalty_reward=weak_penalty_reward,
-                strong_penalty_reward=strong_penalty_reward
-            )
+            use_answer_reward, qvalue_reward, logs = validate_chess_move_qvalue(
+                                    fen=board_fen,
+                                    move=answer_text,
+                                    chess_model_qvalues=chess_model_qvalues,
+                                    legal_moves=legal_moves_san,
+                                    logs=logs)
+        else:
+            use_answer_reward = False
+            qvalue_reward = 0.0
     except Exception as e:
-        answer_score = strong_penalty_reward
+        use_answer_reward = False
+        qvalue_reward = 0.0
+        print("\n[Content Validation] Skipped due to format errors or missing answer:", e)
 
-    total_score = format_score + answer_score
+    total_reward = use_format_reward * format_reward + \
+                    use_english_reward * english_reward + \
+                    use_answer_reward * answer_reward + \
+                    qvalue_reward_scaler * qvalue_reward
 
-    return total_score, logs
+    return total_reward, use_answer_reward, logs

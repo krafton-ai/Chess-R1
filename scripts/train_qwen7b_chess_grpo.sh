@@ -5,9 +5,10 @@ export N_GPUS=4
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
-export DATA_DIR="data/dev_chess_qwen_instruct_with_legal_move_200000_1000"
+export DATA_DIR="data/lichess_10k_qwen_instruct_san_all"
 export BASE_MODEL="Qwen/Qwen2.5-7B-Instruct"
 
 # Experiment metadata
@@ -31,7 +32,7 @@ trainer_args=" \
     trainer.nnodes=1 \
     trainer.save_freq=500 \
     trainer.test_freq=40 \
-    trainer.total_training_steps=1000 \
+    trainer.total_training_steps=200 \
     trainer.resume_from_path=False \
     trainer.default_local_dir=$CHECKPOINT_DIR \
     trainer.default_hdfs_dir=$CHECKPOINT_DIR \
@@ -46,7 +47,7 @@ data_args=" \
     data.train_files=$DATA_DIR/train.parquet \
     data.val_files=$DATA_DIR/test.parquet \
     data.train_batch_size=32 \
-    data.max_prompt_length=768 \
+    data.max_prompt_length=1536 \
     data.max_response_length=2048 \
 "
 

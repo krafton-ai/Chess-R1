@@ -555,7 +555,10 @@ class ActorRolloutRefWorker(Worker):
             data = self.ulysses_sharding_manager.preprocess_data(data=data)
             # perform training
             with Timer(name="update_policy", logger=None) as timer:
-                metrics = self.actor.update_policy(data=data)
+                if self.config.actor.use_token_level_loss:
+                    metrics = self.actor.update_token_level_policy(data=data)
+                else:
+                    metrics = self.actor.update_policy(data=data)
             delta_time = timer.last
             global_num_tokens = data.meta_info["global_token_num"]
             estimated_flops, promised_flops = self.flops_counter.estimate_flops(
@@ -589,6 +592,7 @@ class ActorRolloutRefWorker(Worker):
 
     @register(dispatch_mode=Dispatch.DP_COMPUTE_PROTO)
     def generate_sequences(self, prompts: DataProto):
+        
         prompts = prompts.to("cuda")
 
         assert self._is_rollout

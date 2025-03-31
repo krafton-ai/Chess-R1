@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pprint import pprint
 from typing import Type, Dict
+from collections import defaultdict
 from copy import deepcopy
 from codetiming import Timer
 from omegaconf import OmegaConf, open_dict
@@ -186,7 +187,7 @@ class RayGRPOTrainer(object):
         train_reward_fn=None,
         val_reward_fn=None,
     ):
-
+    
         self.tokenizer = tokenizer
         self.config = config
         self.train_reward_fn = train_reward_fn
@@ -369,6 +370,7 @@ class RayGRPOTrainer(object):
         self.wg_dicts = []
         for resource_pool, class_dict in self.resource_pool_to_cls.items():
             worker_dict_cls = create_colocated_worker_cls(class_dict=class_dict)
+            
             wg_dict = self.ray_worker_group_cls(
                 resource_pool=resource_pool, ray_cls_with_init=worker_dict_cls
             )
@@ -428,6 +430,7 @@ class RayGRPOTrainer(object):
             test_gen_batch_padded, pad_size = pad_dataproto_to_divisor(
                 test_gen_batch, self.actor_rollout_wg.world_size
             )
+            
             test_output_gen_batch_padded = self.actor_rollout_wg.generate_sequences(
                 test_gen_batch_padded
             )
@@ -461,7 +464,7 @@ class RayGRPOTrainer(object):
                     "data_source", ["unknown"] * reward_tensor.shape[0]
                 )
             )
-
+        
         reward_tensor = (
             torch.cat(reward_tensor_lst, dim=0).sum(-1).cpu()
         )  # (batch_size,)
@@ -579,10 +582,11 @@ class RayGRPOTrainer(object):
 
     def fit(self):
         """
-        The training loop of GRPO.
+        The training loop of GRPO with dynamic sampling from DAPO.
         The driver process only need to call the compute functions of the worker group through RPC to construct the GRPO dataflow.
         The light-weight advantage computation is done on the driver process.
         """
+        
         logger = Tracking(
             user_name=self.config.trainer.user_name,
             group_name=self.config.trainer.group_name,
@@ -596,13 +600,18 @@ class RayGRPOTrainer(object):
 
         # perform validation before training
         # currently, we only support validation using the reward_function.
-        val_metrics = self._validate()
-        pprint(f"Initial validation metrics: {val_metrics}")
-        logger.log(data=val_metrics, step=self.global_steps)
-        self.global_steps += 1
+        # TODO: GET RID OF THIS COMMENT
+        # val_metrics = self._validate()
+        # pprint(f"Initial validation metrics: {val_metrics}")
+        # logger.log(data=val_metrics, step=self.global_steps)
+        # self.global_steps += 1
         
         if self.total_training_steps == 0:
             return
+
+        collected_batch = None
+        num_prompt_in_batch = 0
+        num_gen_batches = 0
 
         # Create iterator for dataloader to manage iteration manually
         dataloader_iter = iter(self.train_dataloader)
@@ -611,7 +620,7 @@ class RayGRPOTrainer(object):
         with tqdm(total=self.total_training_steps, desc="Training", unit="step") as pbar:
             # While loop based on steps instead of nested epoch/batch loops
             while self.global_steps < self.total_training_steps:
-                # Get next batch with handling for dataloader exhaustion
+                # Get next new_gen_batch with handling for dataloader exhaustion
                 try:
                     batch_dict = next(dataloader_iter)
                 except StopIteration:
@@ -623,8 +632,10 @@ class RayGRPOTrainer(object):
                 metrics = {}
                 timing_raw = {}
 
-                batch: DataProto = DataProto.from_single_dict(batch_dict)
-                gen_batch = batch.pop(
+                new_gen_batch: DataProto = DataProto.from_single_dict(batch_dict)
+                num_gen_batches += 1
+
+                gen_batch = new_gen_batch.pop(
                     batch_keys=["input_ids", "attention_mask", "position_ids"],
                     non_tensor_batch_keys=["raw_prompt_ids"],
                 )
@@ -636,72 +647,172 @@ class RayGRPOTrainer(object):
                             gen_batch
                         )
 
-                    batch.non_tensor_batch["uid"] = np.array(
-                        [str(uuid.uuid4()) for _ in range(len(batch.batch))],
+                    new_gen_batch.non_tensor_batch["uid"] = np.array(
+                        [str(uuid.uuid4()) for _ in range(len(new_gen_batch.batch))],
                         dtype=object,
                     )
                     # repeat to align with repeated responses in rollout
-                    batch = batch.repeat(
+                    new_gen_batch = new_gen_batch.repeat(
                         repeat_times=self.config.actor_rollout_ref.rollout.n,
                         interleave=True,
                     )
-                    batch = batch.union(gen_batch_output)
+                    new_gen_batch = new_gen_batch.union(gen_batch_output)
 
-                    # balance the number of valid tokens on each dp rank.
-                    # Note that this breaks the order of data inside the batch.
-                    # Please take care when you implement group based adv computation such as GRPO and rloo
-                    self._balance_batch(batch, metrics=metrics)
-
-                    # compute global_valid tokens
-                    batch.meta_info["global_token_num"] = torch.sum(
-                        batch.batch["attention_mask"], dim=-1
-                    ).tolist()
-
-                    # recompute old_log_probs
-                    with _timer("old_log_prob", timing_raw):
-                        old_log_prob = self.actor_rollout_wg.compute_log_prob(batch)
-                        batch = batch.union(old_log_prob)
-
-                    if self.use_reference_policy:
-                        # compute reference log_prob
-                        with _timer("ref", timing_raw):
-                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(
-                                batch
-                            )
-                            batch = batch.union(ref_log_prob)
-
-                    with _timer("adv", timing_raw):
+                    with _timer("reward", timing_raw):
                         # compute scores. Support both model and function-based.
                         # We first compute the scores using reward model. Then, we call reward_fn to combine
                         # the results from reward model and rule-based results.
                         if self.use_rm:
                             # we first compute reward model score
-                            reward_tensor = self.rm_wg.compute_rm_score(batch)
-                            batch = batch.union(reward_tensor)
+                            reward_tensor = self.rm_wg.compute_rm_score(new_gen_batch)
+                            new_gen_batch = new_gen_batch.union(reward_tensor)
 
                         # we combine with rule-based rm
-                        reward_tensor, reward_metrics = self.train_reward_fn(batch)
+                        reward_tensor, correct_seq_tensor, reward_metrics = self.train_reward_fn(new_gen_batch)
                         metrics.update(reward_metrics)
-                        batch.batch["token_level_scores"] = deepcopy(reward_tensor)
+                        new_gen_batch.batch["token_level_scores"] = deepcopy(reward_tensor)
+                        new_gen_batch.batch["correct_sequences"] = deepcopy(correct_seq_tensor)
 
                         # compute rewards. apply_kl_penalty to the rewards if available
                         if not self.config.actor_rollout_ref.actor.get(
                             "use_kl_loss", False
                         ):
-                            batch, kl_metrics = apply_kl_penalty(
-                                batch,
+                            new_gen_batch, kl_metrics = apply_kl_penalty(
+                                new_gen_batch,
                                 kl_ctrl=self.kl_ctrl,
                                 kl_penalty=self.config.algorithm.kl_penalty,
                             )
                             metrics.update(kl_metrics)
                         else:
-                            batch.batch["token_level_rewards"] = deepcopy(batch.batch[
+                            new_gen_batch.batch["token_level_rewards"] = deepcopy(new_gen_batch.batch[
                                 "token_level_scores"
                             ])
+                    
+                    with _timer("dynamic_sampling", timing_raw):
+                        if not self.config.algorithm.dynamic_sampling.enable and not self.config.algorithm.overlong_buffer.enable:
+                            collected_batch = new_gen_batch
+                        else:
+                            # NOTE: When prompts after filtering is less than train batch size, we skip to the next generation batch
+                            if self.config.algorithm.dynamic_sampling.enable:  
+                                num_samples = new_gen_batch.batch['token_level_scores'].shape[0]
 
+                                batch_per_seq_final_rewards = new_gen_batch.batch['token_level_scores'].sum(dim=-1).numpy()
+
+                                # Collect the sequence reward for each trajectory
+                                prompt_uid2rew_vals = defaultdict(list)
+                                for uid, rew_val in zip(new_gen_batch.non_tensor_batch['uid'], batch_per_seq_final_rewards):
+                                    prompt_uid2rew_vals[uid].append(rew_val)
+
+                                prompt_uid2rew_std = {}
+                                for prompt_uid, rew_vals in prompt_uid2rew_vals.items():
+                                    prompt_uid2rew_std[prompt_uid] = np.std(rew_vals)
+
+                                # Different from DAPO, we're gonna exclude all samples which have same values over all samples
+                                kept_rew_prompt_uids = [uid for uid, std in prompt_uid2rew_std.items() if std > 0]
+                                metrics["train/num_dynsamp_discard_samples"] = num_samples - len(kept_rew_prompt_uids) * self.config.actor_rollout_ref.rollout.n
+                            else:
+                                kept_rew_prompt_uids = list(set(new_gen_batch.non_tensor_batch['uid']))
+                            
+                            # Modified Overlong Reward Shaping from DAPO
+                            # Unlike from the original implentation in DAPO, we drop samples which have been cutoff due to max generation length.
+                            # i.e., we don't use the soft penalty. we only use the hard penalty.
+                            if self.config.algorithm.overlong_buffer.enable:
+                                num_samples = new_gen_batch.batch['token_level_scores'].shape[0]
+                                # Maximum allowed length for responses from the overlong buffer
+                                max_response_length = self.config.algorithm.overlong_buffer.max_response_length
+                                
+                                # Extract the prompt IDs and determine the prompt length
+                                prompt_ids = new_gen_batch.batch["prompts"]
+                                prompt_length = prompt_ids.shape[-1]
+                                
+                                # Compute valid response lengths using the attention mask, excluding the prompt part
+                                valid_response_lengths = new_gen_batch.batch["attention_mask"][:, prompt_length:].sum(axis=-1)
+                                
+                                # Create a mapping from each unique prompt ID to its list of valid response lengths
+                                prompt_uid_to_lengths = defaultdict(list)
+                                for uid, length in zip(new_gen_batch.non_tensor_batch["uid"], valid_response_lengths):
+                                    prompt_uid_to_lengths[uid].append(length.item())
+                                
+                                # Filter out prompt IDs that contain any responses that hit the max response length (i.e., are overlong)
+                                kept_length_prompt_uids = [
+                                    uid for uid, lengths in prompt_uid_to_lengths.items()
+                                    if all(l <= max_response_length for l in lengths)
+                                ]
+                                
+                                # Compute the intersection of kept_rew_prompt_uids and kept_length_prompt_uids
+                                final_kept_prompt_uids = list(set(kept_rew_prompt_uids) & set(kept_length_prompt_uids))
+                                metrics["train/num_overlong_discard_samples"] = num_samples - len(kept_length_prompt_uids) * self.config.actor_rollout_ref.rollout.n
+                            else:
+                                final_kept_prompt_uids = kept_rew_prompt_uids
+
+                            kept_traj_idxs = []
+                            for idx, traj_from_prompt_uid in enumerate(new_gen_batch.non_tensor_batch['uid']):
+                                if traj_from_prompt_uid in final_kept_prompt_uids:
+                                    kept_traj_idxs.append(idx)
+                            
+                            num_prompt_in_batch += len(final_kept_prompt_uids)
+                    
+                            new_gen_batch = new_gen_batch[kept_traj_idxs]
+
+                            if collected_batch is None:
+                                collected_batch = new_gen_batch
+                            else:
+                                collected_batch = DataProto.concat([collected_batch, new_gen_batch])
+
+                            prompt_bsz = self.config.data.train_batch_size
+                            if num_prompt_in_batch < prompt_bsz:
+                                print(f'{num_prompt_in_batch=} < {prompt_bsz=}')
+                                max_num_gen_batches = self.config.algorithm.dynamic_sampling.max_num_gen_batches
+                                if max_num_gen_batches <= 0 or num_gen_batches < max_num_gen_batches:
+                                    print(f'{num_gen_batches=}. Keep generating...')
+                                    continue
+                                else:
+                                    raise ValueError(
+                                        f'{num_gen_batches=} >= {max_num_gen_batches=}. Generated too many. Please check your data.'
+                                    )
+                            else:
+                                # Align the batch
+                                collected_batch = DataProto(
+                                    batch=collected_batch.batch, 
+                                    non_tensor_batch=collected_batch.non_tensor_batch, 
+                                    meta_info=collected_batch.meta_info
+                                )
+                                traj_bsz = self.config.data.train_batch_size * self.config.actor_rollout_ref.rollout.n
+                                collected_batch = collected_batch[:traj_bsz]
+                                
+                    
+                    # balance the number of valid tokens on each dp rank.
+                    # Note that this breaks the order of data inside the batch.
+                    # Please take care when you implement group based adv computation such as GRPO and rloo
+                    collected_batch = DataProto(
+                                    batch=collected_batch.batch, 
+                                    non_tensor_batch=collected_batch.non_tensor_batch, 
+                                    meta_info=collected_batch.meta_info
+                                )
+                    self._balance_batch(collected_batch, metrics=metrics)
+
+                    # compute global_valid tokens
+                    collected_batch.meta_info["global_token_num"] = torch.sum(
+                        collected_batch.batch["attention_mask"], dim=-1
+                    ).tolist()
+
+                    # recompute old_log_probs
+                    with _timer("old_log_prob", timing_raw):
+                        old_log_prob = self.actor_rollout_wg.compute_log_prob(collected_batch)
+                        collected_batch = collected_batch.union(old_log_prob)
+
+                    if self.use_reference_policy:
+                        # compute reference log_prob
+                        with _timer("ref", timing_raw):
+                            ref_log_prob = self.ref_policy_wg.compute_ref_log_prob(
+                                collected_batch
+                            )
+                            collected_batch = collected_batch.union(ref_log_prob)
+
+                    with _timer("adv", timing_raw):
                         # compute advantages, executed on the driver process
-                        batch = compute_advantage(
-                            batch,
+                        collected_batch = compute_advantage(
+                            collected_batch,
                             adv_estimator=self.config.algorithm.adv_estimator,
                             gamma=self.config.algorithm.gamma,
                             lam=self.config.algorithm.lam,
@@ -710,21 +821,22 @@ class RayGRPOTrainer(object):
 
                     # update actor
                     with _timer("update_actor", timing_raw):
-                        actor_output = self.actor_rollout_wg.update_actor(batch)
+                        actor_output = self.actor_rollout_wg.update_actor(collected_batch)
                     actor_output_metrics = reduce_metrics(
                         actor_output.meta_info["metrics"]
                     )
                     metrics.update(actor_output_metrics)
 
                     # validate
-                    if (
-                        self.val_reward_fn is not None
-                        and self.config.trainer.test_freq > 0
-                        and self.global_steps % self.config.trainer.test_freq == 0
-                    ):
-                        with _timer("testing", timing_raw):
-                            val_metrics: dict = self._validate()
-                        metrics.update(val_metrics)
+                    #TODO: UNCOMMENT THIS!!
+                    # if (
+                    #     self.val_reward_fn is not None
+                    #     and self.config.trainer.test_freq > 0
+                    #     and self.global_steps % self.config.trainer.test_freq == 0
+                    # ):
+                    #     with _timer("testing", timing_raw):
+                    #         val_metrics: dict = self._validate()
+                    #     metrics.update(val_metrics)
 
                     if (
                         self.config.trainer.save_freq > 0
@@ -734,20 +846,27 @@ class RayGRPOTrainer(object):
                             self._save_checkpoint()
 
                 # collect metrics
-                metrics.update(compute_data_metrics(batch=batch))
+                metrics.update(compute_data_metrics(batch=collected_batch))
                 metrics.update(
-                    compute_timing_metrics(batch=batch, timing_raw=timing_raw)
+                    compute_timing_metrics(batch=collected_batch, timing_raw=timing_raw)
                 )
+
+                metrics["train/num_gen_batches"] = num_gen_batches
+                collected_batch = None
+                num_prompt_in_batch = 0
+                num_gen_batches = 0
+
                 logger.log(data=metrics, step=self.global_steps)
 
                 self.global_steps += 1
                 pbar.update(1)
 
-        # perform validation after training
-        if self.val_reward_fn is not None:
-            val_metrics = self._validate()
-            pprint(f"Final validation metrics: {val_metrics}")
-            logger.log(data=val_metrics, step=self.global_steps)
+        #TODO: UNCOMMENT THIS!!
+        # # perform validation after training
+        # if self.val_reward_fn is not None:
+        #     val_metrics = self._validate()
+        #     pprint(f"Final validation metrics: {val_metrics}")
+        #     logger.log(data=val_metrics, step=self.global_steps)
         if (
             self.config.trainer.save_freq > 0
             and (self.global_steps - 1) % self.config.trainer.save_freq != 0

@@ -62,20 +62,15 @@ class DataParallelGRPOActor(BasePPOActor):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns:
-            entropy: # (bs, response_len)
-            log_probs: # (bs, response_len)
+            entropy: # (bs, response_len) = entropy per each generated token position
+            log_probs: # (bs, response_len) = the log probs for each selected tokens
         """
         response_length = micro_batch["responses"].size(-1)
         multi_modal_inputs = {}
-        if "multi_modal_inputs" in micro_batch:
-            for key in micro_batch["multi_modal_inputs"][0].keys():
-                multi_modal_inputs[key] = torch.cat(
-                    [inputs[key] for inputs in micro_batch["multi_modal_inputs"]], dim=0
-                )
 
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             input_ids = micro_batch["input_ids"]
-            batch_size, seqlen = input_ids.shape
+            batch_size, seqlen = input_ids.shape # (bs, response_len)
             attention_mask = micro_batch["attention_mask"]
             position_ids = micro_batch["position_ids"]
             if position_ids.dim() == 3:  # qwen2vl mrope
@@ -342,7 +337,7 @@ class DataParallelGRPOActor(BasePPOActor):
                     )
                     # split batch into micro_batches
                     micro_batches = mini_batch.split(micro_batch_size_per_gpu)
-
+                
                 self.actor_optimizer.zero_grad()
 
                 for data in micro_batches:
@@ -366,13 +361,15 @@ class DataParallelGRPOActor(BasePPOActor):
                         micro_batch=data, temperature=temperature
                     )
 
-                    pg_loss, pg_clipfrac, ppo_kl, ppo_ratio = core_algos.compute_policy_loss(
-                        old_log_prob=old_log_prob,
-                        log_prob=log_prob,
-                        advantages=advantages,
-                        eos_mask=response_mask,
-                        cliprange=clip_ratio,
-                    )
+                    pg_loss, pg_clipfrac, ppo_kl, ppo_ratio, avg_token_probs = \
+                            core_algos.compute_policy_loss(
+                                old_log_prob=old_log_prob,
+                                log_prob=log_prob,
+                                advantages=advantages,
+                                eos_mask=response_mask,
+                                cliprange=clip_ratio,
+                            )
+                    
                     # compute entropy loss from entropy
                     entropy_loss = verl_F.masked_mean(entropy, response_mask)
 
@@ -389,7 +386,7 @@ class DataParallelGRPOActor(BasePPOActor):
                         )
                         kl_loss = masked_mean(kld, response_mask)
 
-                        policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef
+                        policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef # Decrease KL loss
                         metrics["actor/kl_loss"] = kl_loss.detach().item()
                         metrics["actor/kl_coef"] = self.config.kl_loss_coef
 
@@ -401,6 +398,7 @@ class DataParallelGRPOActor(BasePPOActor):
                     loss.backward()
 
                     data = {
+                        "actor/avg_gen_token_probs": avg_token_probs.detach().item(),
                         "actor/entropy_loss": entropy_loss.detach().item(),
                         "actor/pg_loss": pg_loss.detach().item(),
                         "actor/pg_clipfrac": pg_clipfrac.detach().item(),
@@ -413,6 +411,161 @@ class DataParallelGRPOActor(BasePPOActor):
                 
                 data = {'actor/grad_norm': grad_norm.detach().item()}
                 
+            append_to_dict(metrics, data)
+        self.actor_optimizer.zero_grad()
+        return metrics
+
+
+    def update_token_level_policy(self, data: DataProto):
+        # make sure we are in training mode
+        self.actor_module.train()
+
+        temperature = data.meta_info[
+            "temperature"
+        ]  # temperature must be in the data.meta_info to avoid slient error
+
+        select_keys = [
+            "responses",
+            "input_ids",
+            "attention_mask",
+            "position_ids",
+            "old_log_probs",
+            "advantages",
+        ]
+        if self.config.use_kl_loss:
+            select_keys.append("ref_log_prob")
+        batch = data.select(batch_keys=select_keys).batch
+        has_multi_modal_inputs = "multi_modal_inputs" in data.non_tensor_batch.keys()
+
+        mini_batch_size = self.config.mini_batch_size
+        epochs = self.config.epochs
+        micro_batch_size_per_gpu = self.config.micro_batch_size_per_gpu
+        max_token_len = self.config.max_token_len_per_gpu
+
+        # Split to make minibatch iterator for updating the actor
+        # See PPO paper for details. https://arxiv.org/abs/1707.06347
+        dataloader = batch.split(mini_batch_size)
+
+        metrics = {}
+        for epoch in range(epochs):
+            for batch_idx, data in enumerate(dataloader):
+                # split batch into micro_batches
+                mini_batch = data
+                if has_multi_modal_inputs:
+                    self.gradient_accumulation = (
+                        mini_batch_size // micro_batch_size_per_gpu
+                    )
+                    num_micro_batches = (
+                        mini_batch.batch.batch_size[0] // micro_batch_size_per_gpu
+                    )
+                    micro_batches = data.select(
+                        select_keys, non_tensor_select_keys
+                    ).chunk(num_micro_batches)
+                elif self.config.use_dynamic_bsz:
+                    max_token_len = (
+                        self.config.max_token_len_per_gpu
+                        * self.ulysses_sequence_parallel_size
+                    )
+                    micro_batches, _ = rearrange_micro_batches(
+                        batch=mini_batch, max_token_len=max_token_len
+                    )
+                else:
+                    self.gradient_accumulation = (
+                        mini_batch_size // micro_batch_size_per_gpu
+                    )
+                    # split batch into micro_batches
+                    micro_batches = mini_batch.split(micro_batch_size_per_gpu)
+                
+                # ------------------------------------------------------
+                # 1. Compute total tokens in the entire mini-batch
+                # ------------------------------------------------------
+                total_tokens_in_mini_batch = 0
+                for micro_data in micro_batches:
+                    # If micro_data is DataProto, get the mask from micro_data.batch
+                    if isinstance(micro_data, DataProto):
+                        resp_len = micro_data.batch["responses"].size(1)
+                        mask = micro_data.batch["attention_mask"][:, -resp_len:]
+                        total_tokens_in_mini_batch += mask.sum().item()
+                    else:
+                        # If micro_data is a plain Batch
+                        resp_len = micro_data["responses"].size(1)
+                        mask = micro_data["attention_mask"][:, -resp_len:]
+                        total_tokens_in_mini_batch += mask.sum().item()
+                
+                self.actor_optimizer.zero_grad()
+
+                for data in micro_batches:
+                    if isinstance(data, DataProto):
+                        data = {**data.batch.cuda(), **data.non_tensor_batch}
+                    else:
+                        data = data.cuda()  # actor device is cpu when using offload
+
+                    responses = data["responses"]
+                    response_length = responses.size(1)
+                    attention_mask = data["attention_mask"]
+                    response_mask = attention_mask[:, -response_length:]
+                    old_log_prob = data["old_log_probs"]
+                    advantages = data["advantages"]
+
+                    clip_ratio = self.config.clip_ratio
+                    entropy_coeff = self.config.entropy_coeff
+
+                    # all return: (bsz, response_length)
+                    entropy, log_prob = self._forward_micro_batch(
+                        micro_batch=data, temperature=temperature
+                    )
+
+                    pg_loss, pg_clipfrac, ppo_kl, ppo_ratio, avg_token_probs = \
+                            core_algos.compute_policy_loss(
+                                old_log_prob=old_log_prob,
+                                log_prob=log_prob,
+                                advantages=advantages,
+                                eos_mask=response_mask,
+                                cliprange=clip_ratio,
+                            )
+                    
+                    # compute entropy loss from entropy
+                    entropy_loss = verl_F.masked_mean(entropy, response_mask)
+
+                    # compute policy loss
+                    policy_loss = pg_loss - entropy_loss * entropy_coeff # Promote increasing entropy
+
+                    if self.config.use_kl_loss:
+                        ref_log_prob = data["ref_log_prob"]
+                        # compute kl loss
+                        kld = core_algos.kl_penalty(
+                            logprob=log_prob,
+                            ref_logprob=ref_log_prob,
+                            kl_penalty=self.config.kl_loss_type,
+                        )
+                        kl_loss = masked_mean(kld, response_mask)
+
+                        policy_loss = policy_loss + kl_loss * self.config.kl_loss_coef # Decrease KL loss
+                        metrics["actor/kl_loss"] = kl_loss.detach().item()
+                        metrics["actor/kl_coef"] = self.config.kl_loss_coef
+
+                    # --------------------------------------------------
+                    # Scale by (#tokens in micro-batch / total #tokens)
+                    # --------------------------------------------------
+                    micro_batch_tokens = response_mask.sum().item()
+                    scaled_loss = policy_loss * (micro_batch_tokens / total_tokens_in_mini_batch)
+
+                    scaled_loss.backward()
+
+                    data = {
+                        "actor/avg_gen_token_probs": avg_token_probs.detach().item(),
+                        "actor/entropy_loss": entropy_loss.detach().item(),
+                        "actor/pg_loss": pg_loss.detach().item(),
+                        "actor/pg_clipfrac": pg_clipfrac.detach().item(),
+                        "actor/ppo_kl": ppo_kl.detach().item(),
+                        "actor/log_prob_ratio": ppo_ratio.detach().item(),
+                    }
+                    append_to_dict(metrics, data)
+
+                grad_norm = self._optimizer_step()
+                
+                data = {'actor/grad_norm': grad_norm.detach().item()}
+
             append_to_dict(metrics, data)
         self.actor_optimizer.zero_grad()
         return metrics

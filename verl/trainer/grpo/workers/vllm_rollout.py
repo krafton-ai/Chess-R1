@@ -206,11 +206,12 @@ class vLLMRollout(BaseRollout):
         for i in range(batch_size):
             idx_list.append(_pre_process_inputs(self.pad_token_id, idx[i]))
         
+        # TODO: (DY) 내 생각엔 이것들 때문에 갑자기 아예 학습이 망가진게 아닐까 함 ㅠㅠㅠ 이런거 다 빼버리쟝
         kwargs = {
-                "top_p": safe_getattr(self.model_hf_generation_config, 'top_p', 1.0),
-                "top_k": safe_getattr(self.model_hf_generation_config, 'top_k', -1),
-                "min_p": safe_getattr(self.model_hf_generation_config, 'min_p', 0.0),
-                "repetition_penalty": safe_getattr(self.model_hf_generation_config, 'repetition_penalty', 1.0),
+                # "top_p": safe_getattr(self.model_hf_generation_config, 'top_p', 1.0),
+                # "top_k": safe_getattr(self.model_hf_generation_config, 'top_k', -1),
+                # "min_p": safe_getattr(self.model_hf_generation_config, 'min_p', 0.0),
+                # "repetition_penalty": safe_getattr(self.model_hf_generation_config, 'repetition_penalty', 1.0),
                 "temperature": self.config.temperature, # use temperature value we give in bash
                 "n": self.config.n, # num rollouts for gathering sample
             }
@@ -226,7 +227,7 @@ class vLLMRollout(BaseRollout):
                 prompts=None,  # because we have already convert it to prompt token id
                 sampling_params=self.sampling_params,
                 prompt_token_ids=idx_list,
-                use_tqdm=True,
+                use_tqdm=False,
             )
         
         # TODO(sgm): disable logprob when recompute_log_prob is enable

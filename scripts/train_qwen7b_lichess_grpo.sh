@@ -5,6 +5,7 @@ export N_GPUS=4
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
 export DATA_DIR="data/lichess_10k_qwen_instruct_san_all"

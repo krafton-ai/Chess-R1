@@ -8,7 +8,7 @@ import pandas as pd
 from datasets import Dataset
 from tqdm import tqdm
 from verl.utils.hdfs_io import copy, makedirs
-from verl.utils.reward_score.chess import MOVE_TO_ACTION_DICT
+from verl.utils.reward_score.think_chess import MOVE_TO_ACTION_DICT
 from searchless_chess.src import constants
 
 import chess
@@ -44,6 +44,69 @@ After analyzing the position, clearly state the best move in SAN notation within
 Current FEN string: {board_fen}
 <|im_end|>
 <|im_start|>assistant\nLet me solve this step by step.\n<think>
+"""
+    elif template_type == 'qwen_base_san_fen_legal_rule':
+        prefix = f"""\
+<|im_start|>system
+You are a helpful assistant who plays chess professionally.
+The assistant first thinks through the reasoning process internally and then provides the user with the best move.
+The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
+The reasoning process should describe how you analyze the position and decide on the best move.
+The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5). 
+Now, the user provides a FEN string and a list of legal moves for the given board.
+After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
+
+Reminder of chess rules:
+- Bishops move diagonally.
+- Rooks move horizontally or vertically.
+- Knights jump in an L-shape.
+- Queens combine rook and bishop movement.
+- Kings move one square in any direction.
+- Pawns move forward, capture diagonally, and can promote.
+
+<|im_end|>
+<|im_start|>user
+Current FEN string: {board_fen}
+Legal moves: {legal_moves_san}
+<|im_end|>
+<|im_start|>assistant
+Let me think and select the best move step by step.
+<think>
+"""
+    elif template_type == 'qwen_instruct_san_fen_legal_rule':
+        prefix = f"""\
+<|im_start|>system
+You are a professional chess-playing assistant.
+
+You are given:
+- The current FEN string,
+- A list of legal moves.
+
+Your task is to analyze the position and select the best move.
+- Use <think>...</think> tags to explain your reasoning. Including:
+  - A strategic evaluation of the position.
+  - A comparison of key candidate moves.
+  - For each candidate, consider the opponent's likely response and outcome.
+  - Conclude with a clear justification for your final choice.
+- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
+ 
+Reminder of chess rules:
+- Bishops move diagonally.
+- Rooks move horizontally or vertically.
+- Knights jump in an L-shape.
+- Queens combine rook and bishop movement.
+- Kings move one square in any direction.
+- Pawns move forward, capture diagonally, and can promote.
+
+Wait for the user to provide the FEN, and legal moves before responding.
+<|im_end|>
+<|im_start|>user
+Current FEN string: {board_fen}
+Legal moves: {legal_moves_san}
+<|im_end|>
+<|im_start|>assistant
+Let me think and select the best move step by step.
+<think>
 """
     elif template_type == 'qwen_instruct_san_all':
         prefix = f"""\
