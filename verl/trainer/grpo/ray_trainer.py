@@ -736,7 +736,7 @@ class RayGRPOTrainer(object):
                                 # Filter out prompt IDs that contain any responses that hit the max response length (i.e., are overlong)
                                 kept_length_prompt_uids = [
                                     uid for uid, lengths in prompt_uid_to_lengths.items()
-                                    if all(l <= max_response_length for l in lengths)
+                                    if all(l < max_response_length for l in lengths)
                                 ]
                                 
                                 # Compute the intersection of kept_rew_prompt_uids and kept_length_prompt_uids
