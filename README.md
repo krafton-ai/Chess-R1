@@ -24,8 +24,8 @@ pip3 install flash-attn --no-build-isolation
 
 # spacy_fastlang
 pip install spacy_fastlang
-pip install cupy
-python -m spacy download en_core_web_lg # en_core_web_md
+pip install cupy-cuda12x
+python -m spacy download en_core_web_lg
 
 # install tensorboard (allow host view in kubeflow)
 pip install tensorboard
@@ -35,11 +35,14 @@ sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/ch
 cd verl/third_party/SkyThought
 pip install -e .
 
+# utilities
+pip install -r requirements.txt
+pip install apache_beam
+
 # JAX
 pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# utilities
-pip install -r requirements.txt
+# tmux
 conda install tmux
 ```
 
@@ -50,40 +53,42 @@ conda activate chess_llm
 
 ## Chess task
 
-### Data Preparation
+### Dataset
 ```
-cd searchless_chess/data
+cd searchless_chess
+mkdir data
+cd data
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
 wget https://database.lichess.org/lichess_db_puzzle.csv.zst
-unzst lilchess_db_puzzle.csv.zst
+unzstd lichess_db_puzzle.csv.zst
 ```
 
 ```
-cd searchless_chess/data
 mkdir train
-python extract_lichess.py --save_path ./train/lichess_20k.csv --data_path ./lilchess_db_puzzle.csv --data_size 20000
+python extract_lichess.py --save_path ./train/lichess_20k.csv --data_path ./lichess_db_puzzle.csv --data_size 20000
 
 mkdir test
 python extract_lichess.py --save_path ./test/lichess_10k.csv --data_path ./puzzles.csv --data_size 10000
-
-python extract_lichess.py --save_path ./test/lichess_2k.csv --data_path ./puzzles.csv --data_size 2000
 ```
 
-### Preprocessing
-```
-cd ../..
-python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_all
-```
+## Model
 
-**Download Chess model checkpoint**
 ```
-cd searchless_chess/checkpoints
+cd ..
+mkdir checkpoints
+cd checkpoints
 wget https://storage.googleapis.com/searchless_chess/checkpoints/270M.zip
 unzip 270M.zip
 rm 270M.zip
 ```
 
-## Countdown task (For debug)
+### Preprocessing
+```
+cd ../..
+python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_fen_legal_rule
+```
+
+## Countdown task (For debugging)
 
 ### Data Preparation
 ```

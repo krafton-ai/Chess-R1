@@ -12,7 +12,6 @@ typer==0.15.2
 hf_transfer==0.1.9
 pydantic==2.10.6
 absl-py==2.1.0
-apache-beam==2.63.0
 chess==1.11.2
 chex==0.1.89
 dm-haiku==0.0.13

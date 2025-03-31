@@ -8,13 +8,13 @@ export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
-export DATA_DIR="data/lichess_10k_qwen_instruct_san_all"
-export BASE_MODEL="Qwen/Qwen2.5-7B-Instruct"
+export DATA_DIR=${DATA_DIR:-"data/lichess_10k_qwen_instruct_san_fen_legal_rule"}
+export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B-Instruct"}
 
 # Experiment metadata
-export USER_NAME="test"
-export GROUP_NAME="test"
-export EXPERIMENT_NAME="test"
+export USER_NAME=${USER_NAME:-"test"}
+export GROUP_NAME=${GROUP_NAME:-"test"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"test"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -30,9 +30,9 @@ trainer_args=" \
     trainer.logger=['tensorboard'] \
     trainer.n_gpus_per_node=$N_GPUS \
     trainer.nnodes=1 \
-    trainer.save_freq=-1 \
-    trainer.test_freq=1 \
-    trainer.total_training_steps=0 \
+    trainer.save_freq=1000 \
+    trainer.test_freq=100 \
+    trainer.total_training_steps=1000 \
     trainer.resume_from_path=False \
     trainer.default_local_dir=$CHECKPOINT_DIR \
     trainer.default_hdfs_dir=$CHECKPOINT_DIR \
@@ -46,7 +46,7 @@ trainer_args=" \
 data_args=" \
     data.train_files=$DATA_DIR/train.parquet \
     data.val_files=$DATA_DIR/test.parquet \
-    data.train_batch_size=32 \
+    data.train_batch_size=128 \
     data.max_prompt_length=1536 \
     data.max_response_length=2048 \
 "
@@ -79,6 +79,9 @@ reference_args=" \
 
 algorithm_args=" \
     algorithm.gamma=1.0 \
+    dynamic_sampling.enable=False \
+    dynamic_sampling.max_num_gen_batches=3 \
+    overlong_buffer.enable=True \
 "
 
 TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"

@@ -128,5 +128,6 @@ core
 
 # different repo
 searchless_chess/checkpoints
-searchless_chess/data
 chess_dataset/
+*.csv
+*.zst

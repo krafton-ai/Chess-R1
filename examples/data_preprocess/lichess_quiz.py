@@ -9,7 +9,6 @@ from datasets import Dataset
 from tqdm import tqdm
 from verl.utils.hdfs_io import copy, makedirs
 from verl.utils.reward_score.think_chess import MOVE_TO_ACTION_DICT
-from searchless_chess.src import constants
 
 import chess
 

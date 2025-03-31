@@ -139,7 +139,7 @@ algorithm:
   kl_coef: 0.001
   dynamic_sampling:
     enable: False # DAPO : We try to avoid forgetting to set enable
-    max_num_gen_batches: 10 # Non-positive values mean no upper limit
+    max_num_gen_batches: 3 # Non-positive values mean no upper limit
   overlong_buffer: 
     enable: False # DAPO : We try to avoid forgetting to set enable
     max_response_length: ${data.max_response_length}
