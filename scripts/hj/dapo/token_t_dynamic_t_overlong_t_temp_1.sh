@@ -12,7 +12,7 @@ export DATA_DIR=${DATA_DIR:-"data/lichess_10k_qwen_instruct_san_fen_legal_rule"}
 export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B-Instruct"}
 
 # Experiment metadata
-export USER_NAME=${USER_NAME:-"hj"}
+export USER_NAME=${USER_NAME:-"DY"}
 export GROUP_NAME=${GROUP_NAME:-"dapo"}
 export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"token_t_dynamic_t_overling_t_temp_1"}
 
