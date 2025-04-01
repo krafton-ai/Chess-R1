@@ -65,7 +65,7 @@ unzstd lichess_db_puzzle.csv.zst
 
 ```
 mkdir train
-python extract_lichess.py --save_path ./train/lichess_20k.csv --data_path ./lichess_db_puzzle.csv --data_size 20000
+python extract_lichess_minimal.py --save_path ./train/lichess_200k.csv --data_path ./lichess_db_puzzle.csv --data_size 200000
 
 mkdir test
 python extract_lichess.py --save_path ./test/lichess_10k.csv --data_path ./puzzles.csv --data_size 10000

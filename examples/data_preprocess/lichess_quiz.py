@@ -12,21 +12,28 @@ from verl.utils.reward_score.think_chess import MOVE_TO_ACTION_DICT
 
 import chess
 
+def get_value(record, key):
+    if key in record:
+        return record[key]
+    else:
+        return ''
+
 def make_prefix(template_type, chess_record):
-    game_id = chess_record['id']
-    rating = chess_record['rating']
-    board_fen = chess_record['board_fen']
-    board_str = chess_record['board_str']
-    prev_moves_uci = chess_record['prev_moves_uci']
-    prev_moves_san = chess_record['prev_moves_san']
-    prev_moves_uci_numbering = chess_record['prev_moves_uci_numbering']
-    prev_moves_san_numbering = chess_record['prev_moves_san_numbering']
-    prev_moves_uci_numbering_space = chess_record['prev_moves_uci_numbering_space']
-    prev_moves_san_numbering_space = chess_record['prev_moves_san_numbering_space']
-    legal_moves_uci = chess_record['legal_moves_uci']
-    legal_moves_san = chess_record['legal_moves_san']
-    next_move_uci = chess_record['next_move_uci']
-    next_move_san = chess_record['next_move_san']
+    game_id = get_value(chess_record, 'id')
+    rating = get_value(chess_record, 'rating')
+    board_fen = get_value(chess_record, 'board_fen')
+    board_str = get_value(chess_record, 'board_str')
+    prev_moves_uci = get_value(chess_record, 'prev_moves_uci')
+    prev_moves_san = get_value(chess_record, 'prev_moves_san')
+    prev_moves_uci_numbering = get_value(chess_record, 'prev_moves_uci_numbering')
+    prev_moves_san_numbering = get_value(chess_record, 'prev_moves_san_numbering')
+    prev_moves_uci_numbering_space = get_value(chess_record, 'prev_moves_uci_numbering_space')
+    prev_moves_san_numbering_space = get_value(chess_record, 'prev_moves_san_numbering_space')
+    legal_moves_uci = get_value(chess_record, 'legal_moves_uci')
+    legal_moves_san = get_value(chess_record, 'legal_moves_san')
+    next_move_uci = get_value(chess_record, 'next_move_uci')
+    next_move_san = get_value(chess_record, 'next_move_san')
+    piece_table = get_value(chess_record, 'piece_table')
 
     if template_type == 'qwen_instruct_san_original':
         prefix = f"""\
@@ -322,6 +329,44 @@ Legal moves: {legal_moves_uci}
 Let me think and select the best move step by step.
 <think>
 """
+
+    elif template_type == 'qwen_instruct_san_fen_legal_rule_table':
+        prefix = f"""\
+<|im_start|>system
+You are a professional chess-playing assistant.
+
+You are given:
+- The current FEN string,
+- A list of legal moves.
+- A table of piece in position.
+
+Your task is to analyze the position and select the best move.
+- Use <think>...</think> tags to explain your reasoning. Including:
+  - A strategic evaluation of the position.
+  - A comparison of key candidate moves.
+  - For each candidate, consider the opponent's likely response and outcome.
+  - Conclude with a clear justification for your final choice.
+- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
+ 
+Reminder of chess rules:
+- Bishops move diagonally.
+- Rooks move horizontally or vertically.
+- Knights jump in an L-shape.
+- Queens combine rook and bishop movement.
+- Kings move one square in any direction.
+- Pawns move forward, capture diagonally, and can promote.
+
+Wait for the user to provide the FEN, and legal moves before responding.
+<|im_end|>
+<|im_start|>user
+Current FEN string: {board_fen}
+Legal moves: {legal_moves_san}
+Piece table: {piece_table}
+<|im_end|>
+<|im_start|>assistant
+Let me think and select the best move step by step.
+<think>
+"""
     else:
         raise NotImplementedError
 
@@ -330,11 +375,11 @@ Let me think and select the best move step by step.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', default="./data/lichess_10k")
+    parser.add_argument('--save_dir', default="./data/lichess_200k")
     parser.add_argument('--data_type', default='pgn')
-    parser.add_argument('--train_data_path', default='./searchless_chess/data/test/lichess_10k.csv')
-    parser.add_argument('--test_data_path', default='./searchless_chess/data/test/lichess_10k.csv')
-    parser.add_argument('--template_type', type=str, default='qwen_instruct_san_all')
+    parser.add_argument('--train_data_path', default='./searchless_chess/data/train/lichess_200k.csv')
+    parser.add_argument('--test_data_path', default='./searchless_chess/data/train/lichess_200k.csv')
+    parser.add_argument('--template_type', type=str, default='qwen_instruct_san_fen_legal_rule_table')
 
     args = parser.parse_args()
 
