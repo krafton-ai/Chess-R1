@@ -688,12 +688,12 @@ class RayGRPOTrainer(object):
                                 "token_level_scores"
                             ])
                     
-                    with _timer("dynamic_sampling", timing_raw):
-                        if not self.config.algorithm.dynamic_sampling.enable and not self.config.algorithm.overlong_buffer.enable:
+                    with _timer("Resampling", timing_raw):
+                        if not self.config.algorithm.discard_zero_adv_samples.enable and not self.config.algorithm.discard_maxgenlen_samples.enable:
                             collected_batch = new_gen_batch
                         else:
                             # NOTE: When prompts after filtering is less than train batch size, we skip to the next generation batch
-                            if self.config.algorithm.dynamic_sampling.enable:  
+                            if self.config.algorithm.discard_zero_adv_samples.enable:  
                                 num_samples = new_gen_batch.batch['token_level_scores'].shape[0]
 
                                 batch_per_seq_final_rewards = new_gen_batch.batch['token_level_scores'].sum(dim=-1).numpy()
@@ -716,10 +716,10 @@ class RayGRPOTrainer(object):
                             # Modified Overlong Reward Shaping from DAPO
                             # Unlike from the original implentation in DAPO, we drop samples which have been cutoff due to max generation length.
                             # i.e., we don't use the soft penalty. we only use the hard penalty.
-                            if self.config.algorithm.overlong_buffer.enable:
+                            if self.config.algorithm.discard_maxgenlen_samples.enable:
                                 num_samples = new_gen_batch.batch['token_level_scores'].shape[0]
                                 # Maximum allowed length for responses from the overlong buffer
-                                max_response_length = self.config.algorithm.overlong_buffer.max_response_length
+                                max_response_length = self.config.algorithm.discard_maxgenlen_samples.max_response_length
                                 
                                 # Extract the prompt IDs and determine the prompt length
                                 prompt_ids = new_gen_batch.batch["prompts"]
@@ -741,7 +741,7 @@ class RayGRPOTrainer(object):
                                 
                                 # Compute the intersection of kept_rew_prompt_uids and kept_length_prompt_uids
                                 final_kept_prompt_uids = list(set(kept_rew_prompt_uids) & set(kept_length_prompt_uids))
-                                metrics["train/num_overlong_discard_samples"] = num_samples - len(kept_length_prompt_uids) * self.config.actor_rollout_ref.rollout.n
+                                metrics["train/num_maxgenlen_discard_samples"] = num_samples - len(kept_length_prompt_uids) * self.config.actor_rollout_ref.rollout.n
                             else:
                                 final_kept_prompt_uids = kept_rew_prompt_uids
 
@@ -762,7 +762,7 @@ class RayGRPOTrainer(object):
                             prompt_bsz = self.config.data.train_batch_size
                             if num_prompt_in_batch < prompt_bsz:
                                 print(f'{num_prompt_in_batch=} < {prompt_bsz=}')
-                                max_num_gen_batches = self.config.algorithm.dynamic_sampling.max_num_gen_batches
+                                max_num_gen_batches = self.config.algorithm.max_num_gen_batches
                                 if max_num_gen_batches <= 0 or num_gen_batches < max_num_gen_batches:
                                     print(f'{num_gen_batches=}. Keep generating...')
                                     continue

@@ -137,9 +137,9 @@ algorithm:
   adv_estimator: grpo
   kl_penalty: kl  # how to estimate kl divergence
   kl_coef: 0.001
-  dynamic_sampling:
-    enable: False # DAPO : We try to avoid forgetting to set enable
-    max_num_gen_batches: 3 # Non-positive values mean no upper limit
-  overlong_buffer: 
-    enable: False # DAPO : We try to avoid forgetting to set enable
+  max_num_gen_batches: 3 # DAPO: Non-positive values mean no upper limit
+  discard_zero_adv_samples: # DAPO
+    enable: False 
+  discard_maxgenlen_samples: # DAPO
+    enable: False 
     max_response_length: ${data.max_response_length}

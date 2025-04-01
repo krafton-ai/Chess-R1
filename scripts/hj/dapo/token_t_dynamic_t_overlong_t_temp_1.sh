@@ -80,9 +80,10 @@ reference_args=" \
 
 algorithm_args=" \
     algorithm.gamma=1.0 \
-    algorithm.dynamic_sampling.enable=True \
-    algorithm.dynamic_sampling.max_num_gen_batches=3 \
-    algorithm.overlong_buffer.enable=True \
+    algorithm.discard_zero_adv_samples.enable=True \
+    algorithm.max_num_gen_batches=3 \
+    algorithm.discard_maxgenlen_samples.enable=True \
+    algorithm.discard_maxgenlen_samples.max_response_length=1024 \
 "
 
 TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"

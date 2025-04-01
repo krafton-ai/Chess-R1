@@ -85,7 +85,16 @@ rm 270M.zip
 ### Preprocessing
 ```
 cd ../..
-python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_fen_legal_rule
+
+# San + Fen + Legal moves + Chess rules + Piece Table
+python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_fen_legal_rule_table
+
+# Reasoning template + San + Fen + Legal moves + Chess rules + Piece Table
+python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_reasoningtemplate_san_fen_legal_rule_table
+
+# Reasoning template + San + Fen + Legal moves + Chess rules
+python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_reasoningtemplate_san_fen_legal_rule
+
 ```
 
 ## Countdown task (For debugging)
