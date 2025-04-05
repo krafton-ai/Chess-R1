@@ -58,7 +58,7 @@ conda activate chess_llm
 ## LLama-Factory
 ```
 # How to use webui in kubeflow
-GRADIO_SHARE=1 llamafactory-cli webui to use webui
+GRADIO_SHARE=1 llamafactory-cli webui
 # We need to add dataset_info.json in order to train properly though
 ```
 
