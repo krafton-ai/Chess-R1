@@ -39,6 +39,7 @@ cd ../../
 # LLamaFactory
 cd verl/third_party/SkyThought/skythought/train/LLaMa-Factory
 pip install -e ".[torch,metrics]"
+pip install deepspeed==0.15.4
 
 # utilities
 pip install -r requirements.txt
@@ -58,6 +59,7 @@ conda activate chess_llm
 ## LLama-Factory
 ```
 # How to use webui in kubeflow
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 GRADIO_SHARE=1 llamafactory-cli webui
 # We need to add dataset_info.json in order to train properly though
 ```

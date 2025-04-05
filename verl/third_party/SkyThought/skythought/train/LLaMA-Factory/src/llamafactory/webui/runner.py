@@ -144,7 +144,7 @@ class Runner:
             resize_vocab=get("train.resize_vocab"),
             use_llama_pro=get("train.use_llama_pro"),
             shift_attn=get("train.shift_attn"),
-            report_to="all" if get("train.report_to") else "none",
+            report_to="tensorboard" if get("train.report_to") else "none",
             use_galore=get("train.use_galore"),
             use_badam=get("train.use_badam"),
             output_dir=get_save_dir(model_name, finetuning_type, get("train.output_dir")),
