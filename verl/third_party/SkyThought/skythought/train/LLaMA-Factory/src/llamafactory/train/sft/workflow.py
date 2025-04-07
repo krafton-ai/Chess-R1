@@ -54,6 +54,9 @@ def run_sft(
     if getattr(model, "is_quantized", False) and not training_args.do_train:
         setattr(model, "_hf_peft_config_loaded", True)  # hack here: make model compatible with prediction
 
+    breakpoint()
+    import ipdb; ipdb.set_trace()
+
     data_collator = SFTDataCollatorWith4DAttentionMask(
         template=template,
         pad_to_multiple_of=8 if training_args.do_train else None,  # for shift short attention
