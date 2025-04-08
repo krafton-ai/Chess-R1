@@ -2,6 +2,9 @@
   "identity": {
     "file_name": "identity.json"
   },
+  "chess_modeling": {
+    "file_name": "chess_modeling/chess_modeling_instruct.json"
+  },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
   },
