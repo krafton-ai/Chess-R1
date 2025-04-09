@@ -3,13 +3,19 @@
     "file_name": "identity.json"
   },
   "chess_annotation_train": {
-    "file_name": "annotation_train.json"
+    "file_name": "chess_annotation_train.json"
   },
-  "chess_mate_train": {
-    "file_name": "mate_train.json"
+  "chess_annotation_test": {
+    "file_name": "chess_annotation_test.json"
   },
-  "chess_mate_test": {
-    "file_name": "mate_test.json"
+  "chess_best_move_train": {
+    "file_name": "chess_best_move_train.json"
+  },
+  "chess_comparison_train": {
+    "file_name": "chess_comparison_train.json"
+  },
+  "chess_comparison_test": {
+    "file_name": "chess_comparison_test.json"
   },
   "chess_modeling_train": {
     "file_name": "chess_modeling_train.json"
