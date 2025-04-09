@@ -31,8 +31,8 @@ def simulate_pgn_segment(pgn_text: str):
     Returns:
         tuple: (prompt, applied_moves, result_fen, reasoning_trace)
     """
-    
-    system_prompt = "You are a professional chess assistant. Generate the resulting FEN position given the following SAN moves, starting from the initial FEN."
+    think_action_tags = f"Use <think>...</think> tags to explain your reasoning and <answer>...</answer> tags to give the final FEN."
+    system_prompt = f"Generate the resulting FEN position given the following SAN moves, starting from the initial FEN. {think_action_tags}"
 
     # Define a regex pattern to capture moves.
     move_pattern = r'\d+\.\s*([^\s]+)(?:\s+([^\s]+))?'
@@ -124,9 +124,8 @@ def simulate_pgn_segment(pgn_text: str):
     moves_summary = ", ".join(moves_to_apply)
     moves_summary_full = f" And the next applied SAN moves are: {moves_summary}."
 
-    think_action_tags = f"Use <think>...</think> tags to explain your reasoning and <answer>...</answer> tags to give the final FEN."
     # Build the system prompt string.
-    user_prompt = f"{starting_fen_str}{moves_summary_full} {think_action_tags}"
+    user_prompt = f"{starting_fen_str}{moves_summary_full}"
     
     # Now, apply the selected moves to the original board (which is at the intermediate state) to get the final FEN.
     for move in moves_to_apply:
@@ -152,7 +151,7 @@ def generate_legal_moves_given_fen(text: str):
         tuple: A tuple (prompt_text, response_text), where prompt_text is the concatenation
         of all sentences except the final one and response_text is the last sentence.
     """
-    system_prompt = "You are a professional chess assistant. Generate all legal moves in SAN format for the given FEN board state."
+    system_prompt = "Generate all legal moves in SAN format for the given FEN board state and enclose it within <answer>...</answer> tags."
     
     text = text.strip()
     
@@ -168,13 +167,12 @@ def generate_legal_moves_given_fen(text: str):
     # Create the user prompt using only the current FEN board state.
     user_prompt = f"Current FEN board state is {fen_str}."
     
-    # Split the text into sentences by looking for punctuation that ends a sentence.
-    sentences = re.split(r'(?<=[.?!])\s+', text)
-    if len(sentences) < 2:
-        raise ValueError("Input must contain at least two sentences.")
-    
+    board = chess.Board(fen_str)
+    legal_moves_san = [board.san(move) for move in board.legal_moves]
+    legal_moves_san = (', ').join(legal_moves_san)
+
     # We assume the final sentence is the assistant's prompt.
-    assistant_prompt = sentences[-1].strip()
+    assistant_prompt = f"<answer>{legal_moves_san}</answer>"
     
     return system_prompt, user_prompt, assistant_prompt
 
@@ -193,7 +191,7 @@ def draw_board_given_fen(text: str):
                'response_text' is the final sentence.
     """
 
-    system_prompt = "You are a professional chess assistant. Given a FEN string, draw the current chessboard position."
+    system_prompt = "Given a FEN string, draw the current chessboard position and enclose it within <answer>...</answer> tags."
 
     # First, extract the FEN.
     # The FEN is expected to follow the standard structure:
@@ -235,74 +233,92 @@ def draw_board_given_fen(text: str):
     # Extract the substring between the period and the colon.
     user_prompt = f"Current FEN string is {fen}."
 
-    assistant_prompt = f"{new_chess_board_str}."
+    assistant_prompt = f"<answer>{new_chess_board_str}</answer>"
 
     return system_prompt, user_prompt, assistant_prompt
 
 
 
-if __name__=="__main__":
-    # List your 8 jsonl file names here
-    jsonl_files = [
+# Mapping common to both training and testing
+DESCRIPTION_TO_FUNC = {
+    "Generate FEN given PGN": simulate_pgn_segment,
+    "Draw chess board given FEN": draw_board_given_fen,
+    "Generate all legal moves in SAN format given the board FEN": generate_legal_moves_given_fen,
+}
+
+def process_files(jsonl_files, output_filename, description_mapping):
+    """
+    Processes a list of jsonl files and writes the formatted output
+    to the specified JSON file.
+    """
+    unique_descriptions = Counter()
+    alpaca_data_list = []
+
+    # Process each file
+    for filename in tqdm(jsonl_files, desc="Processing files"):
+        try:
+            with open(filename, 'r', encoding='utf-8') as file:
+                for line in tqdm(file, desc=f"Reading {filename}", leave=False):
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    data = json.loads(line)
+                    description = data.get("metadata", {}).get("description", "")
+                    text = data.get("text", "").strip()
+                    if not text:
+                        continue
+
+                    # Retrieve processing function based on description
+                    func = description_mapping.get(description)
+                    if not func:
+                        continue
+
+                    unique_descriptions[description] += 1
+                    system_prompt, user_prompt, assistant_prompt = func(text)
+
+                    alpaca_data_list.append({
+                        'instruction': system_prompt,
+                        'input': user_prompt,
+                        'output': assistant_prompt,
+                        'system': "You are a professional chess assistant.",
+                    })
+        except Exception as e:
+            print(f"Error processing file {filename}: {e}")
+
+    # Log counts
+    total_samples = sum(unique_descriptions.values())
+    print("Number of unique descriptions:", unique_descriptions)
+    print("Total number of samples:", total_samples)
+
+    # Shuffle the dataset
+    random.shuffle(alpaca_data_list)
+
+    # Save data to output file
+    try:
+        with open(output_filename, 'w', encoding='utf-8') as fout:
+            json.dump(alpaca_data_list, fout, indent=2)
+        print("Preprocessing complete. Data saved to:", output_filename)
+    except Exception as e:
+        print(f"Error writing to file {output_filename}: {e}")
+    
+    return alpaca_data_list
+
+if __name__ == "__main__":
+    # Process training files
+    train_jsonl_files = [
         'chess_modeling-data.jsonl-00000-of-00008',
         'chess_modeling-data.jsonl-00001-of-00008',
         'chess_modeling-data.jsonl-00002-of-00008',
         'chess_modeling-data.jsonl-00003-of-00008',
         'chess_modeling-data.jsonl-00004-of-00008',
         'chess_modeling-data.jsonl-00005-of-00008',
-        'chess_modeling-data.jsonl-00006-of-00008',
+        'chess_modeling-data.jsonl-00006-of-00008'
+    ]
+    process_files(train_jsonl_files, "chess_modeling_instruct_train.json", DESCRIPTION_TO_FUNC)
+
+    # Process test files
+    test_jsonl_files = [
         'chess_modeling-data.jsonl-00007-of-00008'
     ]
-
-    # Set to store unique descriptions
-    unique_descriptions_cnt = Counter()
-    
-    output_filename= "chess_modeling_instruct.json"
-
-    # Mapping from description values to processing functions.
-    description_to_func = {
-        "Generate FEN given PGN": simulate_pgn_segment,
-        "Draw chess board given FEN": draw_board_given_fen,
-        "Generate all legal moves in SAN format given the board FEN": generate_legal_moves_given_fen,
-    }
-
-    alpaca_data_list = []
-    for filename in tqdm(jsonl_files):
-        with open(filename, 'r', encoding='utf-8') as f:
-            for line in tqdm(f):
-                line = line.strip()
-                if not line:
-                    continue
-
-                data = json.loads(line)
-                description = data.get("metadata", {}).get("description", "")
-                text = data.get("text", "").strip()
-                if not text:
-                    continue
-
-                # Look up the function based on description.
-                func = description_to_func.get(description)
-                if not func:
-                    continue
-
-                # Increment a counter for unique descriptions.
-                unique_descriptions_cnt[description] += 1
-
-                # Apply the appropriate function to the text.
-                system_prompt, user_prompt, assistant_prompt = func(text)
-
-                alpaca_entry = {
-                    'instruction': user_prompt,  # or use system_prompt if desired.
-                    'output': assistant_prompt,
-                    'system': system_prompt,
-                }
-                alpaca_data_list.append(alpaca_entry)
-
-    print("Number of unique descriptions:", unique_descriptions_cnt)
-    print("Total number of samples: ", sum(unique_descriptions_cnt.values()))
-
-    # Write the entire list of objects to a JSON file
-    with open(output_filename, 'w') as fout:
-        json.dump(alpaca_data_list, fout, indent=2)
-
-    print("Preprocessing complete. Data saved to:", output_filename)
+    process_files(test_jsonl_files, "chess_modeling_instruct_test.json", DESCRIPTION_TO_FUNC)
