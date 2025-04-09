@@ -37,7 +37,7 @@ pip install -e .
 cd ../../
 
 # LLamaFactory
-cd verl/third_party/SkyThought/skythought/train/LLaMa-Factory
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 pip install -e ".[torch,metrics]"
 pip install deepspeed==0.15.4
 

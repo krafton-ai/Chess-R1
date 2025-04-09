@@ -133,3 +133,4 @@ chess_dataset/
 *.csv
 *.zst
 **.jsonl**
+**.json**
