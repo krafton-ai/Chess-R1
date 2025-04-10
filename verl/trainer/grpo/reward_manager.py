@@ -20,7 +20,8 @@ import time
 import numpy as np
 from collections import defaultdict
 from verl import DataProto
-from verl.utils.reward_score import gsm8k, math, multiply, countdown, think_chess, answer_chess, lichess, chess_best_move, chess_comparison, chess_modeling_instruct
+from verl.utils.reward_score import gsm8k, math, multiply, countdown, think_chess, answer_chess, lichess, \
+                                    chess_best_move, chess_comparison, chess_modeling_instruct, deepmind_lichess
 from jax import random as jrandom
 
 import spacy
@@ -49,6 +50,8 @@ def _select_rm_score_fn(data_source):
         return answer_chess.compute_score
     elif "chess_fen" in data_source:
         return think_chess.compute_score
+    elif "deepmind_lichess" in data_source:
+        return deepmind_lichess.compute_score
     elif "lichess" in data_source:
         return lichess.compute_score
     elif "chess_best_move" in data_source:

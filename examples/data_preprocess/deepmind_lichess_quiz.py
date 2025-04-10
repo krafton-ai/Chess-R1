@@ -400,7 +400,7 @@ if __name__ == '__main__':
     def make_map_fn(split):
         def process_fn(example, idx):
             data = {
-                "data_source": 'lichess',
+                "data_source": 'deepmind_lichess',
                 "prompt": [{
                     "role": "user",
                     "content": make_prefix(
@@ -411,6 +411,7 @@ if __name__ == '__main__':
                 "reward_model": {
                     "style": "rule",
                     "ground_truth": {
+                        "answer": example['next_move_san'],
                         "board_fen": example['board_fen'],
                         "next_move_san": example['next_move_san'],
                         "legal_moves_san": example['legal_moves_san'],
@@ -432,8 +433,8 @@ if __name__ == '__main__':
     # Create local directory if not exists
     os.makedirs(os.path.expanduser(save_dir), exist_ok=True)
 
-    train_filename = "train.parquet"
-    test_filename = "test.parquet"
+    train_filename = "evaluate.parquet"
+    test_filename = "evaluate.parquet"
 
     train_dataset.to_parquet(os.path.join(save_dir, train_filename))
     test_dataset.to_parquet(os.path.join(save_dir, test_filename))
