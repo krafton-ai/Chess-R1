@@ -12,8 +12,8 @@ run_script() {
 }
 
 # Run each script consecutively
-run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_best_move.sh"
-run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_comparison.sh"
-run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_modeling_instruct.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_chesssftqwen7b_chess_best_move.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_chesssftqwen7b_chess_comparison.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_chesssftqwen7b_chess_modeling_instruct.sh"
 
 echo "All scripts executed successfully!"

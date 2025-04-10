@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Environment variables
+export N_GPUS=4
+export CUDA_VISIBLE_DEVICES=0,1,2,3
+export ROLLOUT_TP_SIZE=1  # Set tensor parallel
+export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+
+# Define model and dataset
+# export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
+export DATA_DIR=${DATA_DIR:-"data/chess_comparison_test"}
+export BASE_MODEL=${BASE_MODEL:-"joonleesky/qwen_chess1_2of5"}
+
+# Experiment metadata
+export USER_NAME=${USER_NAME:-"evaluation"}
+export GROUP_NAME=${GROUP_NAME:-"chess_sft"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chessqwen1_2of5_chess_comparison_test_temp7e-1_rollnum5"}
+
+timestamp=$(date +"%m%d-%H:%M")
+DATA_NAME=$(basename "$DATA_DIR")       
+BASE_MODEL_NAME=$(basename "$BASE_MODEL")
+export EXPERIMENT_NAME="${timestamp}_${EXPERIMENT_NAME}_${DATA_NAME}_${BASE_MODEL_NAME}"
+export LOG_DIR="outputs/${USER_NAME}/${GROUP_NAME}/${EXPERIMENT_NAME}"
+export CHECKPOINT_DIR="outputs/${USER_NAME}/${GROUP_NAME}/${EXPERIMENT_NAME}/checkpoint"
+
+trainer_args=" \
+    trainer.user_name=$USER_NAME \
+    trainer.group_name=$GROUP_NAME \
+    trainer.experiment_name=$EXPERIMENT_NAME \
+    trainer.logger=['tensorboard'] \
+    trainer.n_gpus_per_node=$N_GPUS \
+    trainer.nnodes=1 \
+    trainer.save_freq=1000 \
+    trainer.test_freq=100 \
+    trainer.total_training_steps=1000 \
+    trainer.resume_from_path=False \
+    trainer.default_local_dir=$CHECKPOINT_DIR \
+    trainer.default_hdfs_dir=$CHECKPOINT_DIR \
+"
+
+# batch_size: data.train_batch_size * actor.num_response
+# data.train_batch_size: number of prompts
+# actor.mini_batch_size: batch_size for gradient update
+# actor.micro_batch_size_per_gpu: batch size per gpu for gradient accum
+# updates per rollout: actor.epochs * (batch_size / actor.mini_batch_size)
+data_args=" \
+    data.train_files=$DATA_DIR/evaluate.parquet \
+    data.val_files=$DATA_DIR/evaluate.parquet \
+    data.train_batch_size=128 \
+    data.max_prompt_length=1536 \
+    data.max_response_length=2048 \
+"
+
+actor_args=" \
+    actor_rollout_ref.model.path=$BASE_MODEL \
+"
+
+rollout_args=" \
+    actor_rollout_ref.rollout.name=vllm \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
+    actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
+    actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
+    actor_rollout_ref.rollout.temperature=0.7 \
+    actor_rollout_ref.rollout.validate.num_rollouts_for_eval=5 \
+"
+
+reference_args=" \
+    actor_rollout_ref.ref.log_prob_micro_batch_size_per_gpu=8 \
+    actor_rollout_ref.ref.fsdp_config.param_offload=True \
+"
+
+algorithm_args=" \
+    algorithm.gamma=1.0 \
+"
+
+TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"
+
+##########################
+# Train Model
+ray stop --force && ray start --head --include-dashboard=True
+
+# Create log directory if it doesn't exist
+mkdir -p ${LOG_DIR}
+
+python -m verl.trainer.eval_chess $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
