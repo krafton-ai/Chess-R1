@@ -46,7 +46,7 @@ if __name__ == '__main__':
     
     for data_type in data_types:
         # Modify save_dir to include template type
-        save_dir = args.save_dir + data_type + "_debug"
+        save_dir = args.save_dir + data_type
         
         if args.jsonl:
             train_data_path = f"{args.data_path}{data_type}_train.jsonl"
