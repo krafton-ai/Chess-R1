@@ -85,15 +85,6 @@ if __name__ == '__main__':
             output_text = example.get("output", "")
             system_text = example.get("system", "")
             
-            # Optionally, strip any extraneous whitespace.
-            new_example = [
-                {"role": "system",
-                    "content": f"{system_text}"},
-                {"role": "user",
-                    "content": f"{instruction}\n{input_text}"},
-                {"role": "assistant",
-                    "content": " "},
-            ]
             prompt = f"<|im_start|>system\n{system_text}<|im_end|>\n<|im_start|>user\n{instruction}\n{input_text}<|im_end|>\n<|im_start|>assistant\n"
 
             answer_pattern = r'<answer>(.*?)</answer>'

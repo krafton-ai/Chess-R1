@@ -4,7 +4,7 @@
 run_script() {
   script_name="$1"
   echo "Running ${script_name}..."
-  ./"${script_name}"
+  "${script_name}"
   if [ $? -ne 0 ]; then
     echo "Error: ${script_name} failed to execute correctly."
     exit 1
@@ -12,8 +12,8 @@ run_script() {
 }
 
 # Run each script consecutively
-run_script "script1.sh"
-run_script "script2.sh"
-run_script "script3.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_best_move.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_comparison.sh"
+run_script "/home/jovyan/chessLLM/scripts/chess_sft_eval/eval_qwen7b_chess_modeling_instruct.sh"
 
 echo "All scripts executed successfully!"
