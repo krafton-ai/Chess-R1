@@ -145,7 +145,9 @@ def _load_single_dataset(
         logger.info_rank0(f"Sampled {dataset_attr.num_samples} examples from dataset {dataset_attr}.")
 
     if data_args.max_samples is not None:  # truncate dataset
+        print(f"Original dataset length = {len(dataset)}")
         max_samples = min(data_args.max_samples, len(dataset))
+        print(f"Selected dataset size for {dataset_attr.dataset_name} = {max_samples}")
         dataset = dataset.select(range(max_samples))
 
     return align_dataset(dataset, dataset_attr, data_args, training_args)
@@ -168,7 +170,6 @@ def _get_merged_dataset(
     for dataset_attr in get_dataset_list(dataset_names, data_args.dataset_dir):
         if (stage == "rm" and dataset_attr.ranking is False) or (stage != "rm" and dataset_attr.ranking is True):
             raise ValueError("The dataset is not applicable in the current training stage.")
-
         datasets.append(_load_single_dataset(dataset_attr, model_args, data_args, training_args))
 
     return merge_dataset(datasets, data_args, seed=training_args.seed)
@@ -267,6 +268,7 @@ def get_dataset(
         eval_dataset = _get_merged_dataset(data_args.eval_dataset, model_args, data_args, training_args, stage)
 
     with training_args.main_process_first(desc="pre-process dataset"):
+
         dataset = _get_preprocessed_dataset(
             dataset, data_args, training_args, stage, template, tokenizer, processor, is_eval=False
         )
@@ -306,5 +308,5 @@ def get_dataset(
 
         if "validation" in dataset_dict:
             dataset_module["eval_dataset"] = dataset_dict["validation"]
-
+            
         return dataset_module
