@@ -39,11 +39,10 @@ if __name__ == '__main__':
     parser.add_argument('--jsonl', action='store_true')
     args = parser.parse_args()
 
-    data_types = [
-        # "chess_modeling_instruct",
-        "chess_comparison", 
-        "chess_best_move",
-        ]
+    if args.jsonl:
+        data_types = ["chess_comparison", "chess_best_move",]
+    else:
+        data_types = ["chess_modeling_instruct"]
     
     for data_type in data_types:
         # Modify save_dir to include template type
@@ -54,13 +53,13 @@ if __name__ == '__main__':
             test_data_path = f"{args.data_path}{data_type}_test.jsonl"
 
             train_data = jsonl_to_list(train_data_path)
-            train_dataset = Dataset.from_list(train_data).select(range(2000))
+            train_dataset = Dataset.from_list(train_data)
 
             test_dataset = None
             if os.path.exists(test_data_path):
                 with open(test_data_path, 'rb') as f:
                     test_data = jsonl_to_list(test_data_path)
-                test_dataset = Dataset.from_list(test_data).select(range(1000))
+                test_dataset = Dataset.from_list(test_data)
             else:
                 print("Test dataset not found. Skipping test processing.")
         else:
