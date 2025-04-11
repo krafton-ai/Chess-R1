@@ -1,0 +1,8 @@
+handler: bbh
+dataset_path: lukaemon/bbh
+dataset_subset: null 
+dataset_split: test
+question_key: input
+answer_key: target
+templating_parameters:
+  template: "Given the following problem, reason and give a final answer to the problem.\nProblem: {question}\nYour response should end with \"The final answer is [answer]\" where [answer] is the response to the problem."
