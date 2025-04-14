@@ -8,7 +8,7 @@ export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
-export DATA_DIR="data/lichess_10k_qwen_base_san_fen_legal_rule"
+export DATA_DIR="data/lichess_10k_qwen_instruct_san_fen_legal_rule"
 export BASE_MODEL="Qwen/Qwen2.5-0.5B-Instruct"
 
 # Experiment metadata

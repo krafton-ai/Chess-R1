@@ -218,6 +218,8 @@ class RayGRPOTrainer(object):
         self._validate_config()
         self._create_dataloader()
         self.global_steps = 0
+        self.actor_first_path = None
+        self.actor_last_path = None
 
     def _validate_config(self):
         config = self.config
@@ -493,6 +495,9 @@ class RayGRPOTrainer(object):
             self.config.trainer.default_local_dir, f"global_step_{self.global_steps}"
         )
         actor_local_path = os.path.join(local_global_step_folder, "actor")
+        if self.actor_first_path is None:
+            self.actor_first_path = actor_local_path
+        self.actor_last_path = actor_local_path
 
         actor_remote_path = (
             None
@@ -844,6 +849,18 @@ class RayGRPOTrainer(object):
                     ):
                         with _timer("save_checkpoint", timing_raw):
                             self._save_checkpoint()
+
+                    if (
+                        self.config.trainer.sp_freq > 0
+                        and self.global_steps % self.config.trainer.sp_freq == 0
+                    ):
+                        self._save_checkpoint()
+                        #alpha * path1 + (1 - alpha) * path2
+                        self.actor_rollout_wg.shrink_perturb(
+                            path1=self.actor_last_path,
+                            path2=self.actor_first_path,
+                            alpha=self.config.trainer.sp_alpha,
+                        )
 
                 # collect metrics
                 metrics.update(compute_data_metrics(batch=collected_batch))

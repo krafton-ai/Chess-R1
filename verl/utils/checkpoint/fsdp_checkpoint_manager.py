@@ -19,6 +19,8 @@ import warnings
 from typing import Union
 import torch
 import torch.distributed
+from torch.distributed._tensor import DTensor
+
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, StateDictType
 from torch.distributed.fsdp import ShardedStateDictConfig, ShardedOptimStateDictConfig
 
@@ -85,8 +87,12 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         local_extra_state_path = copy_to_local(remote_extra_state_path)
 
         model_state_dict = torch.load(local_model_path)
-        optimizer_state_dict = torch.load(local_optim_path)
-        extra_state_dict = torch.load(local_extra_state_path)
+        optimizer_state_dict = None
+        extra_state_dict = {"lr_scheduler": None}
+        if os.path.exists(local_optim_path):
+            optimizer_state_dict = torch.load(local_optim_path)
+        if os.path.exists(local_extra_state_path):
+            extra_state_dict = torch.load(local_extra_state_path)
 
         if del_local_after_load:
             try:
@@ -110,14 +116,14 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             self.model, StateDictType.SHARDED_STATE_DICT, state_dict_cfg, optim_cfg
         ):
             self.model.load_state_dict(model_state_dict)
-            if self.optimizer is not None:
+            if self.optimizer is not None and optimizer_state_dict is not None:
                 self.optimizer.load_state_dict(optimizer_state_dict)
         # recover random state
         if "rng" in extra_state_dict:
             # 'rng' may not exist for backward compatibility
             self.load_rng_state(extra_state_dict["rng"])
 
-        if self.lr_scheduler is not None:
+        if self.lr_scheduler is not None and extra_state_dict.get("lr_scheduler") is not None:
             self.lr_scheduler.load_state_dict(lr_scheduler_state_dict)
 
     def save_checkpoint(
@@ -200,3 +206,37 @@ class FSDPCheckpointManager(BaseCheckpointManager):
         torch.distributed.barrier()
 
         self.previous_save_local_path = local_path
+
+    def shrink_perturb(self, path1: str, path2: str, alpha: float, tmp_path: str = "/tmp/blended_ckpt") -> None:
+        """
+        Blends model parameters from two checkpoints:
+        new_param = alpha * param1 + (1 - alpha) * param2
+
+        Saves the blended parameters as a new checkpoint and loads it into self.model.
+        """
+
+        def load_full_state(path: str):
+            model_path = os.path.join(path, f"model_world_size_{self.world_size}_rank_{self.rank}.pt")
+            local_model_path = copy_to_local(model_path)
+            return torch.load(local_model_path, map_location="cpu")
+
+        print(f"[rank-{self.rank}]: Loading checkpoint 1 from {path1}")
+        state_dict_1 = load_full_state(path1)
+
+        print(f"[rank-{self.rank}]: Loading checkpoint 2 from {path2}")
+        state_dict_2 = load_full_state(path2)
+
+        # Blend parameters
+        print(f"[rank-{self.rank}]: Blending state_dicts with alpha={alpha}")
+        blended_state_dict = {}
+        for k in state_dict_1:
+            blended_state_dict[k] = alpha * state_dict_1[k] + (1 - alpha) * state_dict_2[k]
+
+        # Save blended model temporarily
+        os.makedirs(tmp_path, exist_ok=True)
+        blended_model_path = os.path.join(tmp_path, f"model_world_size_{self.world_size}_rank_{self.rank}.pt")
+        torch.save(blended_state_dict, blended_model_path)
+        print(f"[rank-{self.rank}]: Saved blended checkpoint to {blended_model_path}")
+
+        # Reload using load_checkpoint (reuses FSDP logic)
+        self.load_checkpoint(tmp_path)
