@@ -1,5 +1,5 @@
 system_prompts: 
-  qwen_cot: &qwen_cot_system_prompt "You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step." 
+  qwen_cot: &qwen_cot_system_prompt "You are a helpful assistant. You should think step-by-step to solve the problem." 
   prime_rl: &prime_rl_system_prompt
     # system prompt can also point to a text file. the path to the file should be relative to the parent dir of model_configs.yaml
     path: system_prompts/prime.txt
