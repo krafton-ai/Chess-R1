@@ -456,7 +456,7 @@ class RayGRPOTrainer(object):
             test_batch = test_batch.union(test_output_gen_batch)
 
             # evaluate using reward_function
-            reward_tensor, reward_metrics = self.val_reward_fn(test_batch)
+            reward_tensor, correct_seq_tensor, reward_metrics = self.val_reward_fn(test_batch)
 
             reward_tensor_lst.append(reward_tensor)
             data_source_lst.append(
