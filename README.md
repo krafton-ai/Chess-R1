@@ -37,7 +37,7 @@ pip install -e .
 cd ../../
 
 # LLamaFactory
-cd verl/third_party/SkyThought/skythought/train/LLaMa-Factory
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 pip install -e ".[torch,metrics]"
 pip install deepspeed==0.15.4
 
@@ -61,7 +61,6 @@ conda activate chess_llm
 # How to use webui in kubeflow
 cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 GRADIO_SHARE=1 llamafactory-cli webui
-# We need to add dataset_info.json in order to train properly though
 ```
 
 
@@ -111,28 +110,44 @@ python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_
 
 ```
 
-## Countdown task (For debugging)
+## Supervised Fine-Tuning
 
-### Data Preparation
-```
-# For Base models
-python ./examples/data_preprocess/countdown.py
+GRADIO_SHARE=1 llamafactory-cli webui
 
-# For Instruct models
-python ./examples/data_preprocess/countdown.py --template qwen-instruct
-```
-
-## Enjoy
-
-### Training
+## RL Fine-Tuning
 ```
 bash scripts/train_qwen7b_lichess_grpo.sh
 ```
 
-### Evaluation
+## Evaluation
+
+### General Reasoning Evaluation (Skythought eval)
+
 ```
 bash scripts/test_eval.sh
 ```
+
+### Big Bench Hard (llm-harness)
+```
+cd verl/third_party
+git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness
+cd lm-evaluation-harness
+conda create -n lm_harness python=3.10.12
+conda activate lm_harness
+pip install -e .
+pip install lm_eval[vllm]
+accelerate launch -m lm_eval --model hf \
+    --model_args pretrained=Qwen/Qwen2.5-7B-Instruct,dtype="bfloat16" \
+    --tasks bbh \
+    --batch_size 64 &
+```
+
+### GT-Bench
+```
+hello
+```
+
+
 
 ## Acknowledge
 * We run our experiments based on [veRL](https://github.com/volcengine/verl).

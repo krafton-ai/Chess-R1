@@ -2,8 +2,26 @@
   "identity": {
     "file_name": "identity.json"
   },
-  "chess_modeling": {
-    "file_name": "chess_modeling/chess_modeling_instruct.json"
+  "chess_annotation_train": {
+    "file_name": "chess_annotation_train.json"
+  },
+  "chess_annotation_test": {
+    "file_name": "chess_annotation_test.json"
+  },
+  "chess_best_move_train": {
+    "file_name": "chess_best_move_train.json"
+  },
+  "chess_comparison_train": {
+    "file_name": "chess_comparison_train.json"
+  },
+  "chess_comparison_test": {
+    "file_name": "chess_comparison_test.json"
+  },
+  "chess_modeling_train": {
+    "file_name": "chess_modeling_train.json"
+  },
+  "chess_modeling_test": {
+    "file_name": "chess_modeling_test.json"
   },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"

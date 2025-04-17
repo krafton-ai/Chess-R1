@@ -21,8 +21,8 @@ class TaskConfig(BaseModel):
     answer_key: Optional[str] = None
     templating_parameters: Dict[str, str] = Field(default_factory=dict)
     # Example fields
-    # fewshot_config: List[Dict[str, Any]] = Field(default_factory=list)
-    # num_fewshot: int = 0
+    fewshot_config: List[Dict[str, Any]] = Field(default_factory=list)
+    num_fewshot: int = 0
 
     preprocess_config: Dict[str, Any] = Field(default_factory=dict)
 
@@ -60,6 +60,13 @@ class TaskHandler(ABC):
     @abstractmethod
     def update_results(self, problem: Dict[str, Any], response: str) -> Dict[str, Any]:
         pass
+
+    def format_fewshot_prompt(self) -> str:
+        fewshot_examples = self.task_config.fewshot_config[: self.task_config.num_fewshot]
+        formatted = ""
+        for example in fewshot_examples:
+            formatted += f"User: {example['input']}\nAssistant: <think>{example['output']}\n\n"
+        return formatted
 
     def make_conversations(
         self,

@@ -744,6 +744,20 @@ class ActorRolloutRefWorker(Worker):
             offload_fsdp_optimizer(self.actor_optimizer)
 
 
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    def shrink_perturb(self, path1: str, path2: str, alpha: float) -> None:
+        """
+        Update the actor's parameters by moving them toward the parameters loaded from the checkpoint at `path`.
+        Each rank loads its own checkpoint file and the update is performed using:
+        
+            new_param = (1 - alpha) * current_param + alpha * checkpoint_param
+
+        Args:
+            path (str): The checkpoint directory (or identifier) from which to load baseline weights (e.g. "actor_0").
+            alpha (float): The interpolation factor between current and baseline weights.
+        """
+        self.checkpoint_manager.shrink_perturb(path1=path1, path2=path2, alpha=alpha)
+
 # TODO(sgm): we may need to extract it to dp_reward_model.py
 class RewardModelWorker(Worker):
     """
