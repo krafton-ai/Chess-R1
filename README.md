@@ -66,7 +66,26 @@ GRADIO_SHARE=1 llamafactory-cli webui
 
 ## Chess task
 
-### Dataset
+### SFT Dataset
+```
+# Download
+# Chess mechanics data
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory/data
+# train
+gdown https://drive.google.com/uc?id=10exG7hWuLg0z3TrMGalcUvJnYDunc-qx
+# test
+gdown https://drive.google.com/uc?id=1BtUx_tqqWHLpqBIeMiWRrlFoXh0C4XFh
+
+# Chess Annotation data (HJ)
+# Chess Best move data (HJ)
+```
+
+```
+# Preprocess
+python examples/data_preprocess/chess_sft.py
+```
+
+### RL Dataset
 ```
 cd searchless_chess
 mkdir data

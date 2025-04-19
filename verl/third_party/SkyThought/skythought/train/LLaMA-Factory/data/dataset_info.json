@@ -17,11 +17,11 @@
   "chess_comparison_test": {
     "file_name": "chess_comparison_test.json"
   },
-  "chess_modeling_train": {
-    "file_name": "chess_modeling_train.json"
+  "chess_mechanics_train": {
+    "file_name": "chess_mechanics_train.json"
   },
-  "chess_modeling_test": {
-    "file_name": "chess_modeling_test.json"
+  "chess_mechanics_test": {
+    "file_name": "chess_mechanics_test.json"
   },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"

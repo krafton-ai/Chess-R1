@@ -8,13 +8,14 @@ export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
-export DATA_DIR=${DATA_DIR:-"data/lichess_200k_qwen_instruct_san_fen_legal_rule_table"}
+# export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
+export DATA_DIR=${DATA_DIR:-"data/chess_mechanics"}
 export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-0.5B-Instruct"}
 
 # Experiment metadata
-export USER_NAME=${USER_NAME:-"test"}
-export GROUP_NAME=${GROUP_NAME:-"test"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"test"}
+export USER_NAME=${USER_NAME:-"evaluation"}
+export GROUP_NAME=${GROUP_NAME:-"chess_sft"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_modeling_instruct_test_temp7e-1_rollnum1"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -53,15 +54,6 @@ data_args=" \
 
 actor_args=" \
     actor_rollout_ref.model.path=$BASE_MODEL \
-    actor_rollout_ref.actor.optim.lr=1e-6 \
-    actor_rollout_ref.actor.epochs=1 \
-    actor_rollout_ref.actor.mini_batch_size=32 \
-    actor_rollout_ref.actor.micro_batch_size_per_gpu=2 \
-    actor_rollout_ref.actor.use_kl_loss=True \
-    actor_rollout_ref.actor.kl_loss_coef=0.001 \
-    actor_rollout_ref.actor.kl_loss_type=low_var_kl \
-    actor_rollout_ref.actor.fsdp_config.param_offload=False \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
 "
 
 rollout_args=" \
@@ -69,7 +61,8 @@ rollout_args=" \
     actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
-    actor_rollout_ref.rollout.n=8 \
+    actor_rollout_ref.rollout.temperature=0.7 \
+    actor_rollout_ref.rollout.validate.num_rollouts_for_eval=1 \
 "
 
 reference_args=" \
@@ -86,5 +79,8 @@ TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $
 ##########################
 # Train Model
 ray stop --force && ray start --head --include-dashboard=True
-mkdir ${LOG_DIR}
-python -m verl.trainer.main_grpo $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
+
+# Create log directory if it doesn't exist
+mkdir -p ${LOG_DIR}
+
+python -m verl.trainer.eval_chess_sft $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
