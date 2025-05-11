@@ -308,4 +308,4 @@ class ChessSFTRewardManager:
         # add a single sequence_str as an example
         normalized_agg_reward_logs[f'generation/text'] = "\n\n".join(example_texts)
         
-        return reward_tensor, normalized_agg_reward_logs
+        return reward_tensor, correct_seq, normalized_agg_reward_logs

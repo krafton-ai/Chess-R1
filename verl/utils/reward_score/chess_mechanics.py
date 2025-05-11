@@ -78,12 +78,10 @@ def compute_score(
             if cur_data_type == 'draw_chessboard':
                 # For drawing a chessboard, we use a strict equality check.
                 correct = (answer_text == answer)
-                score = answer_reward if correct else 0.0
             elif cur_data_type == 'consecutive_SAN_FEN':
                 # For FEN strings, a strict equality check after normalizing whitespace.
                 correct = (answer_text.strip() == answer.strip())
-                score = answer_reward if correct else 0.0
-            elif cur_data_type == 'legal_moves':
+            elif cur_data_type == 'legal_moves_jaccard':
                 # For legal moves, compare as sets so order doesn't matter.
                 # Split comma separated moves, remove extra spaces.
                 gt_moves = set(move.strip() for move in answer.split(',') if move.strip())
@@ -96,7 +94,6 @@ def compute_score(
                     jaccard_sim = 0
                 else:
                     jaccard_sim = len(moves_intersection) / len(moves_union)
-                breakpoint()
                 correct = jaccard_sim
             else:
                 # If not identified, default to false.
@@ -104,9 +101,10 @@ def compute_score(
 
             logs[f'{cur_data_type}/accuracy'] = float(correct)
         else:
+            correct = False
             logs[f'{cur_data_type}/accuracy'] = 0.0
     except Exception as e:
         print("\n[Content Validation] Skipped due to format errors or missing answer:", e)                
 
     
-    return score, logs      
+    return correct, logs      

@@ -404,10 +404,10 @@ Let's think step by step.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', default="./data/lichess_200k")
+    parser.add_argument('--save_dir', default="./data/lichess_db_puzzle_processed")
     parser.add_argument('--data_type', default='pgn')
-    parser.add_argument('--train_data_path', default='./searchless_chess/data/train/lichess_200k.csv')
-    parser.add_argument('--test_data_path', default='./searchless_chess/data/train/lichess_200k.csv')
+    parser.add_argument('--train_data_path', default='./searchless_chess/data/train/lichess_db_puzzle_processed.csv')
+    parser.add_argument('--test_data_path', default='./searchless_chess/data/train/lichess_db_puzzle_processed.csv')
     parser.add_argument('--template_type', type=str, default='qwen_instruct_san_fen_legal_rule_table')
 
     args = parser.parse_args()
@@ -420,19 +420,29 @@ if __name__ == '__main__':
         for row in df:
             yield row
 
-    train_dataset = Dataset.from_generator(
-        gen_from_csv, 
-        gen_kwargs={
-            'path': args.train_data_path,
-        }
-    )
+    # train_dataset = Dataset.from_generator(
+    #     gen_from_csv, 
+    #     gen_kwargs={
+    #         'path': args.train_data_path,
+    #     }
+    # )
 
-    test_dataset = Dataset.from_generator(
-        gen_from_csv,
-        gen_kwargs={
-            'path': args.test_data_path,
-        }
-    )
+    # test_dataset = Dataset.from_generator(
+    #     gen_from_csv,
+    #     gen_kwargs={
+    #         'path': args.test_data_path,
+    #     }
+    # )
+
+    raw_train_dataset = Dataset.from_generator(gen_from_csv, gen_kwargs={'path': args.train_data_path})
+    print(len(raw_train_dataset))
+
+    TRAIN_SIZE = 100000
+    TEST_SIZE = 5000
+
+    assert len(raw_train_dataset) >= TRAIN_SIZE + TEST_SIZE
+    train_dataset = raw_train_dataset.select(range(TRAIN_SIZE))
+    test_dataset = raw_train_dataset.select(range(TRAIN_SIZE, TRAIN_SIZE + TEST_SIZE))
 
     def make_map_fn(split):
         def process_fn(example, idx):

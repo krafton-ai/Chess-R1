@@ -606,10 +606,10 @@ class RayGRPOTrainer(object):
         # perform validation before training
         # currently, we only support validation using the reward_function.
         # TODO: GET RID OF THIS COMMENT
-        # val_metrics = self._validate()
-        # pprint(f"Initial validation metrics: {val_metrics}")
-        # logger.log(data=val_metrics, step=self.global_steps)
-        # self.global_steps += 1
+        val_metrics = self._validate()
+        pprint(f"Initial validation metrics: {val_metrics}")
+        logger.log(data=val_metrics, step=self.global_steps)
+        self.global_steps += 1
         
         if self.total_training_steps == 0:
             return
@@ -834,14 +834,14 @@ class RayGRPOTrainer(object):
 
                     # validate
                     #TODO: UNCOMMENT THIS!!
-                    # if (
-                    #     self.val_reward_fn is not None
-                    #     and self.config.trainer.test_freq > 0
-                    #     and self.global_steps % self.config.trainer.test_freq == 0
-                    # ):
-                    #     with _timer("testing", timing_raw):
-                    #         val_metrics: dict = self._validate()
-                    #     metrics.update(val_metrics)
+                    if (
+                        self.val_reward_fn is not None
+                        and self.config.trainer.test_freq > 0
+                        and self.global_steps % self.config.trainer.test_freq == 0
+                    ):
+                        with _timer("testing", timing_raw):
+                            val_metrics: dict = self._validate()
+                        metrics.update(val_metrics)
 
                     if (
                         self.config.trainer.save_freq > 0
@@ -879,11 +879,11 @@ class RayGRPOTrainer(object):
                 pbar.update(1)
 
         #TODO: UNCOMMENT THIS!!
-        # # perform validation after training
-        # if self.val_reward_fn is not None:
-        #     val_metrics = self._validate()
-        #     pprint(f"Final validation metrics: {val_metrics}")
-        #     logger.log(data=val_metrics, step=self.global_steps)
+        # perform validation after training
+        if self.val_reward_fn is not None:
+            val_metrics = self._validate()
+            pprint(f"Final validation metrics: {val_metrics}")
+            logger.log(data=val_metrics, step=self.global_steps)
         if (
             self.config.trainer.save_freq > 0
             and (self.global_steps - 1) % self.config.trainer.save_freq != 0

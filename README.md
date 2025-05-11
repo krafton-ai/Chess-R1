@@ -93,6 +93,9 @@ cd data
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
 wget https://database.lichess.org/lichess_db_puzzle.csv.zst
 unzstd lichess_db_puzzle.csv.zst
+
+# Lichess with 5 moves each (Hojoon preprocessed)
+gdown https://drive.google.com/file/d/1_EkHtyVWnOKEPEi9hvuUinLhxJR9-68w/view?usp=sharing
 ```
 
 ```

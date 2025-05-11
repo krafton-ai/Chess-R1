@@ -236,9 +236,9 @@ def gen_from_csv(path, limit=400000):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_path', default="./searchless_chess/data/test/puzzles.csv")
-    parser.add_argument('--data_path', default='./searchless_chess/data/puzzles.csv')
-    parser.add_argument('--data_size', type=int, default=10000)
+    parser.add_argument('--save_path', default="./searchless_chess/data/test/lichess_db_puzzle_processed.csv")
+    parser.add_argument('--data_path', default='./searchless_chess/data/lichess_db_puzzle.csv')
+    parser.add_argument('--data_size', type=int, default=150000)
     
     args = parser.parse_args()
 
