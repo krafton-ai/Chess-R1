@@ -7,6 +7,7 @@ import pandas as pd
 
 from datasets import Dataset
 from tqdm import tqdm
+from collections import defaultdict 
 from verl.utils.hdfs_io import copy, makedirs
 from verl.utils.reward_score.think_chess import MOVE_TO_ACTION_DICT
 
@@ -414,11 +415,11 @@ if __name__ == '__main__':
 
     args.save_dir = args.save_dir + f"_{args.template_type}"
 
-    def gen_from_csv(path):
-        df = pd.read_csv(path)
-        df = df.to_dict(orient='records')
-        for row in df:
-            yield row
+    # def gen_from_csv(path):
+    #     df = pd.read_csv(path)
+    #     df = df.to_dict(orient='records')
+    #     for row in df:
+    #         yield row
 
     # train_dataset = Dataset.from_generator(
     #     gen_from_csv, 
@@ -433,6 +434,17 @@ if __name__ == '__main__':
     #         'path': args.test_data_path,
     #     }
     # )
+
+    # We use only odd number data (our turn data)
+    def gen_from_csv(path):
+        df = pd.read_csv(path)
+        id_counts = defaultdict(int)
+        for row in df.to_dict(orient='records'):
+            cid = row['id']
+            # id_counts[cid] is the zero-based index of this row for that id
+            if id_counts[cid] % 2 == 0:
+                yield row
+            id_counts[cid] += 1
 
     raw_train_dataset = Dataset.from_generator(gen_from_csv, gen_kwargs={'path': args.train_data_path})
     print(len(raw_train_dataset))

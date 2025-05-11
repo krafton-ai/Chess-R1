@@ -232,6 +232,124 @@ class RewardManager:
 
         return reward_tensor, correct_seq_tensor, normalized_agg_reward_logs
 
+class LichessRewardManager:
+    """The Lichess reward manager."""
+
+    def __init__(self, tokenizer, num_examine, rew_configs) -> None:
+        self.tokenizer = tokenizer
+        self.num_examine = num_examine  # the number of batches of decoded responses to print to the console
+        self.rew_configs = rew_configs
+
+
+    def __call__(self, data: DataProto):
+        """We will expand this function gradually based on the available datasets"""
+        st_time = time.time()
+
+        reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
+        correct_seq_tensor = torch.zeros(*(data.batch.batch_size), dtype=torch.int32)
+
+        per_id_flags = defaultdict(list)
+        per_id_rating = {}
+
+        already_print_data_sources = {}
+        agg_reward_logs = defaultdict(float)
+        example_texts = []
+
+        for i in range(len(data)):
+            data_item = data[i] # DataProtoItem
+
+            prompt_ids = data_item.batch["prompts"]
+
+            prompt_length = prompt_ids.shape[-1]
+
+            valid_prompt_length = data_item.batch["attention_mask"][
+                :prompt_length
+            ].sum()
+            valid_prompt_ids = prompt_ids[-valid_prompt_length:]
+
+            response_ids = data_item.batch["responses"]
+            valid_response_length = data_item.batch["attention_mask"][
+                prompt_length:
+            ].sum()
+            valid_response_ids = response_ids[:valid_response_length]
+
+            # decode
+            sequences = torch.cat((valid_prompt_ids, valid_response_ids))
+            sequences_str = self.tokenizer.decode(sequences)
+
+            ground_truth_dict = data_item.non_tensor_batch["reward_model"]["ground_truth"]
+            pid = ground_truth_dict["id"]
+            rating = ground_truth_dict["rating"]
+
+            # only record rating once per id
+            if pid not in per_id_rating:
+                per_id_rating[pid] = rating
+
+            # select rm_score
+            data_source = data_item.non_tensor_batch["data_source"]
+            compute_score_fn = _select_rm_score_fn(data_source)
+            
+            correct_seq, reward_logs = compute_score_fn(
+                    solution_str=sequences_str, 
+                    ground_truth_dict=ground_truth_dict,
+                    answer_reward=1.0,
+                )
+            
+            correct_seq_tensor[i] = correct_seq
+            per_id_flags[pid].append(bool(correct_seq))
+
+            # aggregate logging metrics
+            for key, value in reward_logs.items():
+                agg_reward_logs[key] += value
+
+            if data_source not in already_print_data_sources:
+                already_print_data_sources[data_source] = 0
+
+            if already_print_data_sources[data_source] < self.num_examine:
+                already_print_data_sources[data_source] += 1
+                example_texts.append(sequences_str)
+
+        # normalize aggregate logging metrics
+        normalized_agg_reward_logs = {}
+        for key in agg_reward_logs.keys():
+            normalized_agg_reward_logs[f'reward/{key}'] = agg_reward_logs[key] / len(data)
+        
+        # add a single sequence_str as an example
+        normalized_agg_reward_logs[f'generation/text'] = "\n\n".join(example_texts)
+
+        # compute “all‐correct” per puzzle:
+        num_lichess_correct = 0
+        for pid, flags in per_id_flags.items():
+            if all(flags):
+                num_lichess_correct += 1
+        lichess_accuracy = num_lichess_correct / len(per_id_flags.keys())
+
+        # now compute 200-point bins for rating
+        bin_correct_counts = defaultdict(int)
+        bin_total_counts   = defaultdict(int)
+
+        for pid, flags in per_id_flags.items():
+            rating = per_id_rating[pid]
+            # compute the 200-point bucket this rating falls into
+            lower = (rating // 200) * 200
+            upper = lower + 200
+            label = f"lichess_acc_{lower}-{upper}"
+            bin_total_counts[label] += 1
+            if all(flags):
+                bin_correct_counts[label] += 1
+
+        # finally, accuracy per rating bin
+        accuracy_by_rating_bin = {
+            label: bin_correct_counts[label] / bin_total_counts[label]
+            for label in sorted(bin_total_counts, key=lambda lb: int(lb.split('-')[1]))
+        }
+
+        normalized_agg_reward_logs["lichess_accuracy"] = lichess_accuracy
+        normalized_agg_reward_logs.update(accuracy_by_rating_bin)
+        
+        return reward_tensor, correct_seq, normalized_agg_reward_logs
+
+
 
 class ChessSFTRewardManager:
     """The reward manager for Chess SFT dataset"""

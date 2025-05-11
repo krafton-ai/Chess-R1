@@ -7,6 +7,7 @@ import pandas as pd
 
 from datasets import Dataset
 from tqdm import tqdm
+from collections import defaultdict
 from verl.utils.hdfs_io import copy, makedirs
 from verl.utils.reward_score.think_chess import MOVE_TO_ACTION_DICT
 
@@ -369,26 +370,24 @@ Let's think step by step.
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--save_dir', default="./data/deepmind_lichess_test")
-    parser.add_argument('--train_data_path', default='./searchless_chess/data/train/deepmind_lichess.csv')
-    parser.add_argument('--test_data_path', default='./searchless_chess/data/train/deepmind_lichess.csv')
-    parser.add_argument('--template_type', type=str, default='qwen_instruct_reasoningtemplate_san_fen_legal_rule_table')
+    parser.add_argument('--train_data_path', default='./searchless_chess/data/dm_lichess_10k_processed.csv')
+    parser.add_argument('--test_data_path', default='./searchless_chess/data/dm_lichess_10k_processed.csv')
+    parser.add_argument('--template_type', type=str, default='qwen_instruct_san_fen_legal_rule_table')
 
     args = parser.parse_args()
 
     args.save_dir = args.save_dir + f"_{args.template_type}"
 
+    # We use only odd number data (our turn data)
     def gen_from_csv(path):
         df = pd.read_csv(path)
-        df = df.to_dict(orient='records')
-        for row in df:
-            yield row
-
-    train_dataset = Dataset.from_generator(
-        gen_from_csv, 
-        gen_kwargs={
-            'path': args.train_data_path,
-        }
-    )
+        id_counts = defaultdict(int)
+        for row in df.to_dict(orient='records'):
+            cid = row['id']
+            # id_counts[cid] is the zero-based index of this row for that id
+            if id_counts[cid] % 2 == 0:
+                yield row
+            id_counts[cid] += 1
 
     test_dataset = Dataset.from_generator(
         gen_from_csv,
@@ -400,7 +399,7 @@ if __name__ == '__main__':
     def make_map_fn(split):
         def process_fn(example, idx):
             data = {
-                "data_source": 'deepmind_lichess',
+                "data_source": 'deepmind_lichess_accuracy',
                 "prompt": [{
                     "role": "user",
                     "content": make_prefix(
@@ -415,6 +414,8 @@ if __name__ == '__main__':
                         "board_fen": example['board_fen'],
                         "next_move_san": example['next_move_san'],
                         "legal_moves_san": example['legal_moves_san'],
+                        "id": example['id'],
+                        "rating": example['rating']
                     }
                 },
                 "extra_info": {
@@ -425,7 +426,6 @@ if __name__ == '__main__':
             return data
         return process_fn
 
-    train_dataset = train_dataset.map(function=make_map_fn('train'), with_indices=True)
     test_dataset = test_dataset.map(function=make_map_fn('test'), with_indices=True)
 
     save_dir = args.save_dir
@@ -433,8 +433,6 @@ if __name__ == '__main__':
     # Create local directory if not exists
     os.makedirs(os.path.expanduser(save_dir), exist_ok=True)
 
-    train_filename = "evaluate.parquet"
     test_filename = "evaluate.parquet"
 
-    train_dataset.to_parquet(os.path.join(save_dir, train_filename))
     test_dataset.to_parquet(os.path.join(save_dir, test_filename))

@@ -1,21 +1,21 @@
 #!/bin/bash
 
 # Environment variables
-export N_GPUS=1
-export CUDA_VISIBLE_DEVICES=0
+export N_GPUS=4
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
 # export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
-export DATA_DIR=${DATA_DIR:-"data/chess_mechanics"}
-export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-0.5B-Instruct"}
+export DATA_DIR=${DATA_DIR:-"data/deepmind_lichess_test_qwen_instruct_san_fen_legal_rule_table"}
+export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B"}
 
 # Experiment metadata
 export USER_NAME=${USER_NAME:-"evaluation"}
-export GROUP_NAME=${GROUP_NAME:-"chess_sft"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_modeling_instruct_test_temp7e-1_rollnum1"}
+export GROUP_NAME=${GROUP_NAME:-"chess_sft_qwen7b_base"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_deepmind_lichess_test"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -45,8 +45,8 @@ trainer_args=" \
 # actor.micro_batch_size_per_gpu: batch size per gpu for gradient accum
 # updates per rollout: actor.epochs * (batch_size / actor.mini_batch_size)
 data_args=" \
-    data.train_files=$DATA_DIR/train.parquet \
-    data.val_files=$DATA_DIR/test.parquet \
+    data.train_files=$DATA_DIR/evaluate.parquet \
+    data.val_files=$DATA_DIR/evaluate.parquet \
     data.train_batch_size=128 \
     data.max_prompt_length=1536 \
     data.max_response_length=2048 \
@@ -83,4 +83,4 @@ ray stop --force && ray start --head --include-dashboard=True
 # Create log directory if it doesn't exist
 mkdir -p ${LOG_DIR}
 
-python -m verl.trainer.eval_chess_sft $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
+python -m verl.trainer.eval_lichess_accuracy $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
