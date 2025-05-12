@@ -36,31 +36,54 @@ def make_prefix(template_type, chess_record):
     next_move_san = get_value(chess_record, 'next_move_san')
     piece_table = get_value(chess_record, 'piece_table')
 
-    if template_type == 'qwen_instruct_san_original':
+    if template_type == 'qwen_instruct_fen':
         prefix = f"""\
 <|im_start|>system
 You are a helpful assistant who plays chess professionally.
 The assistant first thinks through the reasoning process internally and then provides the user with the best move.
 The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
 The reasoning process should describe how you analyze the position and decide on the best move.
-The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5). 
-Now, the user provides a FEN string and a list of legal moves for the given board.
+The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5).
+Now, the user provides a FEN string.
 After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
 <|im_end|>
 <|im_start|>user
 Current FEN string: {board_fen}
 <|im_end|>
-<|im_start|>assistant\nLet me solve this step by step.\n<think>
+<|im_start|>assistant
+Let's think step by step.
+<think>
 """
-    elif template_type == 'qwen_instruct_san_fen_legal_rule':
+    elif template_type == 'qwen_instruct_fen_legal':
         prefix = f"""\
 <|im_start|>system
 You are a helpful assistant who plays chess professionally.
 The assistant first thinks through the reasoning process internally and then provides the user with the best move.
 The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
 The reasoning process should describe how you analyze the position and decide on the best move.
-The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5). 
-Now, the user provides a FEN string and a list of legal moves for the given board.
+The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5).
+Now, the user provides a FEN string, and a list of legal moves for the given board.
+After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
+
+<|im_end|>
+<|im_start|>user
+Current FEN string: {board_fen}
+Legal moves: {legal_moves_san}
+<|im_end|>
+<|im_start|>assistant
+Let's think step by step.
+<think>
+"""
+
+    elif template_type == 'qwen_instruct_fen_legal_rule':
+        prefix = f"""\
+<|im_start|>system
+You are a helpful assistant who plays chess professionally.
+The assistant first thinks through the reasoning process internally and then provides the user with the best move.
+The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
+The reasoning process should describe how you analyze the position and decide on the best move.
+The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5).
+Now, the user provides a FEN string, and a list of legal moves for the given board.
 After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
 
 Reminder of chess rules:
@@ -77,278 +100,21 @@ Current FEN string: {board_fen}
 Legal moves: {legal_moves_san}
 <|im_end|>
 <|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_fen_legal_rule':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- The current FEN string,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Reminder of chess rules:
-- Bishops move diagonally.
-- Rooks move horizontally or vertically.
-- Knights jump in an L-shape.
-- Queens combine rook and bishop movement.
-- Kings move one square in any direction.
-- Pawns move forward, capture diagonally, and can promote.
-
-Wait for the user to provide the FEN, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Current FEN string: {board_fen}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-    elif template_type == 'qwen_instruct_san_all':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in SAN),
-- The current FEN string,
-- An ASCII board representation,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, FEN, ASCII board, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_san_numbering_space}
-Current FEN string: {board_fen}
-Current ASCII board: {board_str}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
+Let's think step by step.
 <think>
 """
 
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_no_history':
+    elif template_type == 'qwen_instruct_fen_legal_rule_table':
         prefix = f"""\
 <|im_start|>system
-You are a professional chess-playing assistant.
+You are a helpful assistant who plays chess professionally.
+The assistant first thinks through the reasoning process internally and then provides the user with the best move.
+The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
+The reasoning process should describe how you analyze the position and decide on the best move.
+The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5).
+Now, the user provides a FEN string, a list of legal moves for the given board, and a square by square chess piece position table.
+After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
 
-You are given:
-- The current FEN string,
-- An ASCII board representation,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the FEN, ASCII board, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Current FEN string: {board_fen}
-Current ASCII board: {board_str}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_no_fen':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in SAN),
-- An ASCII board representation,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, ASCII board, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_san_numbering_space}
-Current ASCII board: {board_str}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_no_ASCII':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in SAN),
-- The current FEN string,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, FEN, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_san_numbering_space}
-Current FEN string: {board_fen}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_no_legal':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in SAN),
-- The current FEN string,
-- An ASCII board representation,
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, FEN, and ASCII board before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_san_numbering_space}
-Current FEN string: {board_fen}
-Current ASCII board: {board_str}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_no_spacing':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in SAN),
-- The current FEN string,
-- An ASCII board representation,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, FEN, ASCII board, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_san_numbering}
-Current FEN string: {board_fen}
-Current ASCII board: {board_str}
-Legal moves: {legal_moves_san}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_uci':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- A history of previous moves (in UCI),
-- The current FEN string,
-- An ASCII board representation,
-- A list of legal moves.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in UCI (e.g., e7e5 g1f3). Only include the move, without extra text or symbols.
- 
-Wait for the user to provide the move history, FEN, ASCII board, and legal moves before responding.
-<|im_end|>
-<|im_start|>user
-Previous moves: {prev_moves_uci_numbering_space}
-Current FEN string: {board_fen}
-Current ASCII board: {board_str}
-Legal moves: {legal_moves_uci}
-<|im_end|>
-<|im_start|>assistant
-Let me think and select the best move step by step.
-<think>
-"""
-
-    elif template_type == 'qwen_instruct_reasoningtemplate_san_fen_legal_rule_table':
-        prefix = f"""\
-<|im_start|>system
-You are a professional chess-playing assistant.
-
-You are given:
-- The current FEN string,
-- A list of legal moves.
-- A table of piece in position.
-
-Your task is to analyze the position and select the best move.
-- Use <think>...</think> tags to explain your reasoning. Including:
-  - A strategic evaluation of the position.
-  - A comparison of key candidate moves.
-  - For each candidate, consider the opponent's likely response and outcome.
-  - Conclude with a clear justification for your final choice.
-- Use <answer>...</answer> to give the best move in SAN (e.g., Nf3, Rxf2). Only include the move, without extra text or symbols.
- 
 Reminder of chess rules:
 - Bishops move diagonally.
 - Rooks move horizontally or vertically.
@@ -368,7 +134,7 @@ Let's think step by step.
 <think>
 """
 
-    elif template_type == 'qwen_instruct_san_fen_legal_rule_table':
+    elif template_type == 'qwen_instruct_fen_legal_rule_table_pgn-full':
         prefix = f"""\
 <|im_start|>system
 You are a helpful assistant who plays chess professionally.
@@ -376,9 +142,9 @@ The assistant first thinks through the reasoning process internally and then pro
 The reasoning process and the answer must be enclosed within <think> </think> and <answer> </answer> tags, respectively.
 The reasoning process should describe how you analyze the position and decide on the best move.
 The answer must be in SAN notation, strictly using the moving piece and the destination square (e.g., Nf3, Rxf2, c5).
-Now, the user provides a FEN string, a list of legal moves for the given board, and a square by square chess piece position table.
+Now, the user provides a FEN string, a list of legal moves for the given board, the PGN representing the game history up to the current FEN position, and a square by square chess piece position table.
 After analyzing the position, clearly state the best move in SAN notation within <answer> </answer> tags. i.e., <answer> Nf3 </answer>
- 
+
 Reminder of chess rules:
 - Bishops move diagonally.
 - Rooks move horizontally or vertically.
@@ -391,6 +157,7 @@ Reminder of chess rules:
 <|im_start|>user
 Current FEN string: {board_fen}
 Legal moves: {legal_moves_san}
+PGN leading to FEN: {prev_moves_san_numbering}
 Chess piece position table: {piece_table}
 <|im_end|>
 <|im_start|>assistant
