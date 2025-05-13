@@ -8,13 +8,14 @@ export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
-export DATA_DIR=${DATA_DIR:-"data/lichess_db_puzzle_processed_qwen_instruct_fen_legal_rule"}
-export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B"}
+# export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
+export DATA_DIR=${DATA_DIR:-"data/deepmind_lichess_test_qwen_instruct_fen_legal_rule_table"}
+export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-3B"}
 
 # Experiment metadata
-export USER_NAME=${USER_NAME:-"ICLR"}
-export GROUP_NAME=${GROUP_NAME:-"Qwen25_7B_Base"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"Nochessdata_noreastemp_fen_legal_rule"}
+export USER_NAME=${USER_NAME:-"evaluation"}
+export GROUP_NAME=${GROUP_NAME:-"lichess_prompt_ablation"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"qwen3b_base_deepmind_lichess_qwen_instruct_fen_legal_rule_table"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -30,9 +31,9 @@ trainer_args=" \
     trainer.logger=['tensorboard'] \
     trainer.n_gpus_per_node=$N_GPUS \
     trainer.nnodes=1 \
-    trainer.save_freq=200 \
-    trainer.test_freq=50 \
-    trainer.total_training_steps=200 \
+    trainer.save_freq=1000 \
+    trainer.test_freq=100 \
+    trainer.total_training_steps=1000 \
     trainer.resume_from_path=False \
     trainer.default_local_dir=$CHECKPOINT_DIR \
     trainer.default_hdfs_dir=$CHECKPOINT_DIR \
@@ -44,33 +45,24 @@ trainer_args=" \
 # actor.micro_batch_size_per_gpu: batch size per gpu for gradient accum
 # updates per rollout: actor.epochs * (batch_size / actor.mini_batch_size)
 data_args=" \
-    data.train_files=$DATA_DIR/train.parquet \
-    data.val_files=$DATA_DIR/debug_evaluate.parquet \
+    data.train_files=$DATA_DIR/evaluate.parquet \
+    data.val_files=$DATA_DIR/evaluate.parquet \
     data.train_batch_size=128 \
-    data.max_prompt_length=1024 \
+    data.max_prompt_length=1536 \
     data.max_response_length=2048 \
 "
 
 actor_args=" \
     actor_rollout_ref.model.path=$BASE_MODEL \
-    actor_rollout_ref.actor.optim.lr=1e-6 \
-    actor_rollout_ref.actor.epochs=1 \
-    actor_rollout_ref.actor.mini_batch_size=128 \
-    actor_rollout_ref.actor.micro_batch_size_per_gpu=2 \
-    actor_rollout_ref.actor.use_kl_loss=True \
-    actor_rollout_ref.actor.kl_loss_coef=0.001 \
-    actor_rollout_ref.actor.kl_loss_type=low_var_kl \
-    actor_rollout_ref.actor.fsdp_config.param_offload=False \
-    actor_rollout_ref.actor.fsdp_config.optimizer_offload=False \
-    actor_rollout_ref.actor.use_token_level_loss=False \
 "
 
 rollout_args=" \
     actor_rollout_ref.rollout.name=vllm \
-    actor_rollout_ref.rollout.gpu_memory_utilization=0.6 \
+    actor_rollout_ref.rollout.gpu_memory_utilization=0.4 \
     actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu=8 \
     actor_rollout_ref.rollout.tensor_model_parallel_size=$ROLLOUT_TP_SIZE \
-    actor_rollout_ref.rollout.n=8 \
+    actor_rollout_ref.rollout.temperature=0.7 \
+    actor_rollout_ref.rollout.validate.num_rollouts_for_eval=1 \
 "
 
 reference_args=" \
@@ -80,9 +72,6 @@ reference_args=" \
 
 algorithm_args=" \
     algorithm.gamma=1.0 \
-    algorithm.discard_zero_adv_samples.enable=True \
-    algorithm.max_num_gen_batches=10 \
-    algorithm.discard_maxgenlen_samples.enable=True \
 "
 
 TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args"
@@ -94,4 +83,4 @@ ray stop --force && ray start --head --include-dashboard=True
 # Create log directory if it doesn't exist
 mkdir -p ${LOG_DIR}
 
-python -m verl.trainer.main_grpo $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
+python -m verl.trainer.eval_lichess_accuracy $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
