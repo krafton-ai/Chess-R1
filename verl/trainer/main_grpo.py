@@ -16,7 +16,7 @@ import os
 import ray
 import hydra
 from verl.trainer.grpo.ray_trainer import RayGRPOTrainer
-from verl.trainer.grpo.reward_manager import RewardManager
+from verl.trainer.grpo.reward_manager import RewardManager, LichessRewardManager
 
 
 @hydra.main(config_path="config", config_name="grpo_trainer", version_base=None)
@@ -88,7 +88,7 @@ def main_task(config, compute_score=None):
     # instantiate reward function
     # - for rule-based rm, we directly call a reward score
     train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
-    val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    val_reward_fn = LichessRewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
 
     resource_pool_manager = ResourcePoolManager(
         resource_pool_spec={

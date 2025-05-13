@@ -172,10 +172,11 @@ Let's think step by step.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--save_dir', default="./data/deepmind_lichess_test")
+    # parser.add_argument('--save_dir', default="./data/deepmind_lichess_test")
+    parser.add_argument('--save_dir', default="./data/lichess_db_puzzle_processed")
     parser.add_argument('--train_data_path', default='./searchless_chess/data/dm_lichess_10k_processed.csv')
     parser.add_argument('--test_data_path', default='./searchless_chess/data/dm_lichess_10k_processed.csv')
-    parser.add_argument('--template_type', type=str, default='qwen_instruct_san_fen_legal_rule_table')
+    parser.add_argument('--template_type', type=str, default='qwen_instruct_fen_legal_rule')
 
     args = parser.parse_args()
 

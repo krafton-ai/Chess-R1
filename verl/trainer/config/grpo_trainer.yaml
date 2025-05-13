@@ -18,7 +18,7 @@ trainer:
   del_local_ckpt_after_load: False
   default_local_dir: outputs/${trainer.user_name}/${trainer.group_name}/${trainer.experiment_name}/checkpoint
   default_hdfs_dir: outputs/${trainer.user_name}/${trainer.group_name}/${trainer.experiment_name}/checkpoint
-  sp_freq: 5
+  sp_freq: 0
   sp_alpha: 0.0
 
 data:

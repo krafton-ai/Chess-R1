@@ -176,7 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_type', default='pgn')
     parser.add_argument('--train_data_path', default='./searchless_chess/data/train/lichess_db_puzzle_processed.csv')
     parser.add_argument('--test_data_path', default='./searchless_chess/data/train/lichess_db_puzzle_processed.csv')
-    parser.add_argument('--template_type', type=str, default='qwen_instruct_san_fen_legal_rule_table')
+    parser.add_argument('--template_type', type=str, default='qwen_instruct_fen_legal_rule')
 
     args = parser.parse_args()
 

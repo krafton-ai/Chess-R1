@@ -850,18 +850,6 @@ class RayGRPOTrainer(object):
                         with _timer("save_checkpoint", timing_raw):
                             self._save_checkpoint()
 
-                    if (
-                        self.config.trainer.sp_freq > 0
-                        and self.global_steps % self.config.trainer.sp_freq == 0
-                    ):
-                        self._save_checkpoint()
-                        #alpha * path1 + (1 - alpha) * path2
-                        self.actor_rollout_wg.shrink_perturb(
-                            path1=self.actor_last_path,
-                            path2=self.actor_first_path,
-                            alpha=self.config.trainer.sp_alpha,
-                        )
-
                 # collect metrics
                 metrics.update(compute_data_metrics(batch=collected_batch))
                 metrics.update(
