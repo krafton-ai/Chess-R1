@@ -17,6 +17,8 @@ chex==0.1.89
 dm-haiku==0.0.13
 grain-nightly==0.0.10
 jax==0.5.2
+jax-cuda12-pjrt==0.5.3
+jax-cuda12-plugin==0.5.3
 jaxtyping==0.2.38
 jupyter==1.1.1
 numpy==1.26.4
@@ -28,3 +30,4 @@ ipdb==0.13.13
 multiprocess==0.70.15
 spacy_fastlang==2.1.0
 gdown==5.2.0
+ipdb==0.13.13

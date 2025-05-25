@@ -34,19 +34,21 @@ sed -i "s/\"--bind_all\", default=True,/\"--bind_all\",/g" /home/jovyan/conda/ch
 # skythought
 cd verl/third_party/SkyThought
 pip install -e .
-cd ../../
+cd ../../../
 
 # LLamaFactory
 cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 pip install -e ".[torch,metrics]"
 pip install deepspeed==0.15.4
+cd ../../../../../../
+
+# JAX
+pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # utilities
 pip install -r requirements.txt
 pip install apache_beam
 
-# JAX
-pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # tmux
 conda install tmux
@@ -62,49 +64,25 @@ conda activate chess_llm
 ### Download dataset
 ```
 # Download entire dataset
-mkdir temp
-cd temp
-gdown https://drive.google.com/uc?id=1TdaDgXyzmsFNYYIiRi8dxZb-G9H0ctcV
-unzip chess_dataset.zip && rm chess_dataset.zip
-mv chess_annotation_train.jsonl ../verl/third_party/SkyThought/skythought/train/LLaMA-Factory/data
-mv chess_best_move_train.jsonl
-mv chess_best_move test.jsonl
-mv chess_comparison_train.jsonl
-mv chess_comparison test.jsonl
-mv chess_mechanics_train.json
-mv chess_mechanics_test.json
+bash run_dataset.sh
 ```
 
 ### Zero-shot chess evaluation
-
-### SFT Dataset
 ```
-# Download
-# Chess mechanics data
-cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory/data
-# train
-gdown https://drive.google.com/uc?id=10exG7hWuLg0z3TrMGalcUvJnYDunc-qx
-# test
-gdown https://drive.google.com/uc?id=1BtUx_tqqWHLpqBIeMiWRrlFoXh0C4XFh
-
-# Chess Annotation data (HJ)
-# Chess Best move data (HJ)
+# Example scripts
+bash ./scripts/zeroshot_eval/qwen7b_base/eval_all.sh
 ```
-
+### SFT Training
 ```
-# Preprocess
-python examples/data_preprocess/chess_sft.py
-```
-
-## LLama-Factory
-```
+# Use LLaMA-Factory
 # How to use webui in kubeflow
 cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
 GRADIO_SHARE=1 llamafactory-cli webui
 ```
 
+### RL Training
 
-### RL Dataset
+#### RL Dataset
 ```
 # If you want to collect your own RL dataset by yourself
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
@@ -112,12 +90,14 @@ wget https://database.lichess.org/lichess_db_puzzle.csv.zst
 unzstd lichess_db_puzzle.csv.zst
 
 python ./searchless_chess/data/extract_lichess.py --save_path ./raw_data --data_path ./lichess_db_puzzle.csv 
+
+# Change template type according to your needs
+python ./data_preprocess/lichess_quiz.py --template_type qwen_instruct_fen_legal_rule_table
 ```
 
-## Model
-
+#### Setup RL feedback model
 ```
-cd ..
+cd searchless_chess
 mkdir checkpoints
 cd checkpoints
 wget https://storage.googleapis.com/searchless_chess/checkpoints/270M.zip
@@ -125,58 +105,19 @@ unzip 270M.zip
 rm 270M.zip
 ```
 
-### Preprocessing
+
+#### RL Fine-Tuning
 ```
-cd ../..
-
-# San + Fen + Legal moves + Chess rules + Piece Table
-python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_san_fen_legal_rule_table
-
-# Reasoning template + San + Fen + Legal moves + Chess rules + Piece Table
-python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_reasoningtemplate_san_fen_legal_rule_table
-
-# Reasoning template + San + Fen + Legal moves + Chess rules
-python ./examples/data_preprocess/lichess_quiz.py --template_type qwen_instruct_reasoningtemplate_san_fen_legal_rule
-
+# w/o RL feedback
+bash ./scripts/grpo_train/Qwen25_7B_Base_reastemp_fen_legal_rule_norlfeedback.sh
+# w/ RL feedback
+bash ./scripts/grpo_train/Qwen25_7B_Base_reastemp_fen_legal_rule_rlfeedback.sh
 ```
 
-## Supervised Fine-Tuning
-
-GRADIO_SHARE=1 llamafactory-cli webui
-
-## RL Fine-Tuning
+## Tensorboard Logging
 ```
-bash scripts/train_qwen7b_lichess_grpo.sh
+tensorboard --logidr=outputs/{USER_NAME}/{GROUP_NAME}/{EXPERIMENT_NAME}
 ```
-
-## Evaluation
-
-### General Reasoning Evaluation (Skythought eval)
-
-```
-bash scripts/test_eval.sh
-```
-
-### Big Bench Hard (llm-harness)
-```
-cd verl/third_party
-git clone --depth 1 https://github.com/EleutherAI/lm-evaluation-harness
-cd lm-evaluation-harness
-conda create -n lm_harness python=3.10.12
-conda activate lm_harness
-pip install -e .
-pip install lm_eval[vllm]
-accelerate launch -m lm_eval --model hf \
-    --model_args pretrained=Qwen/Qwen2.5-7B-Instruct,dtype="bfloat16" \
-    --tasks bbh \
-    --batch_size 64 &
-```
-
-### GT-Bench
-```
-hello
-```
-
 
 
 ## Acknowledge

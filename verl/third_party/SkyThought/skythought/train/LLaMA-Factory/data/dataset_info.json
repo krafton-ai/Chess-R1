@@ -5,26 +5,14 @@
   "chess_annotation_train": {
     "file_name": "chess_annotation_train.jsonl"
   },
-  "chess_annotation_test": {
-    "file_name": "chess_annotation_test.jsonl"
-  },
   "chess_best_move_train": {
     "file_name": "chess_best_move_train.jsonl"
-  },
-  "chess_best_move_test": {
-    "file_name": "chess_best_move_test.jsonl"
   },
   "chess_comparison_train": {
     "file_name": "chess_comparison_train.jsonl"
   },
-  "chess_comparison_test": {
-    "file_name": "chess_comparison_test.jsonl"
-  },
   "chess_mechanics_train": {
     "file_name": "chess_mechanics_train.json"
-  },
-  "chess_mechanics_test": {
-    "file_name": "chess_mechanics_test.json"
   },
   "alpaca_en_demo": {
     "file_name": "alpaca_en_demo.json"
