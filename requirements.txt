@@ -27,7 +27,7 @@ orbax-checkpoint==0.11.8
 pandas==2.2.2
 typing-extensions==4.12.2
 ipdb==0.13.13
-multiprocess==0.70.15
+multiprocess==0.70.18
 spacy_fastlang==2.1.0
 gdown==5.2.0
 ipdb==0.13.13
