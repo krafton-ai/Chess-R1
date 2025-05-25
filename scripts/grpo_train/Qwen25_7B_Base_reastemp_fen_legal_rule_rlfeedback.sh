@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Environment variables
-export N_GPUS=2
-export CUDA_VISIBLE_DEVICES=0,1
+export N_GPUS=4 # number of gpus
+export CUDA_VISIBLE_DEVICES=0,1,2,3 # fix this so that it matches N_GPU
 export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
@@ -12,7 +12,7 @@ export DATA_DIR=${DATA_DIR:-"data/lichess_db_puzzle_processed_qwen_instruct_reas
 export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B"}
 
 # Experiment metadata
-export USER_NAME=${USER_NAME:-"ICLR_season2"}
+export USER_NAME=${USER_NAME:-"USER"}
 export GROUP_NAME=${GROUP_NAME:-"Qwen25_7B_Base"}
 export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"Nochessdata_yesreastemp_fen_legal_rule_noRLfeedback"}
 

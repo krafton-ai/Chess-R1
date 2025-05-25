@@ -12,7 +12,7 @@ export DATA_DIR=${DATA_DIR:-"data/lichess_db_puzzle_processed_qwen_instruct_reas
 export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B"}
 
 # Experiment metadata
-export USER_NAME=${USER_NAME:-"ICLR_season2"}
+export USER_NAME=${USER_NAME:-"USER"}
 export GROUP_NAME=${GROUP_NAME:-"Qwen25_7B_Base"}
 export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"Nochessdata_yesreastemp_fen_legal_rule_noRLfeedback"}
 
