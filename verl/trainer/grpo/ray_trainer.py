@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-FSDP PPO Trainer with Ray-based single controller.
+FSDP GRPO Trainer with Ray-based single controller.
 This trainer supports model-agonistic model initialization with huggingface
 """
 
@@ -607,6 +607,7 @@ class RayGRPOTrainer(object):
         # currently, we only support validation using the reward_function.
         # TODO: GET RID OF THIS COMMENT
         val_metrics = self._validate()
+        breakpoint()
         pprint(f"Initial validation metrics: {val_metrics}")
         logger.log(data=val_metrics, step=self.global_steps)
         self.global_steps += 1
