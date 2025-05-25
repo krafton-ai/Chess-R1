@@ -130,7 +130,7 @@ class Tracking(object):
 
         # Set up console log file
         console_log_path = os.path.join(log_dir, "console_logs.txt")
-        self.console_log_file = open(console_log_path, "w")
+        self.console_log_file = open(console_log_path, "w", encoding="utf-8")
 
         # Store the original stdout and stderr
         self.original_stdout = sys.stdout

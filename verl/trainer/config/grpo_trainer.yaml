@@ -115,6 +115,8 @@ actor_rollout_ref:
     ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
 
 reward_model:
+  train_type: Base # [Base, Lichess]
+  val_type: Lichess # [Base, Lichess]
   chess_model_type: action_value # [action_value, behavioral_cloning, state_value]
   format_reward: 0.1
   english_reward: 0.1

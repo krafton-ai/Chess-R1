@@ -56,15 +56,26 @@ conda install tmux
 source ~/.bashrc
 conda activate chess_llm
 ```
-## LLama-Factory
-```
-# How to use webui in kubeflow
-cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
-GRADIO_SHARE=1 llamafactory-cli webui
-```
-
 
 ## Chess task
+
+### Download dataset
+```
+# Download entire dataset
+mkdir temp
+cd temp
+gdown https://drive.google.com/uc?id=1TdaDgXyzmsFNYYIiRi8dxZb-G9H0ctcV
+unzip chess_dataset.zip && rm chess_dataset.zip
+mv chess_annotation_train.jsonl ../verl/third_party/SkyThought/skythought/train/LLaMA-Factory/data
+mv chess_best_move_train.jsonl
+mv chess_best_move test.jsonl
+mv chess_comparison_train.jsonl
+mv chess_comparison test.jsonl
+mv chess_mechanics_train.json
+mv chess_mechanics_test.json
+```
+
+### Zero-shot chess evaluation
 
 ### SFT Dataset
 ```
@@ -85,25 +96,22 @@ gdown https://drive.google.com/uc?id=1BtUx_tqqWHLpqBIeMiWRrlFoXh0C4XFh
 python examples/data_preprocess/chess_sft.py
 ```
 
+## LLama-Factory
+```
+# How to use webui in kubeflow
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
+GRADIO_SHARE=1 llamafactory-cli webui
+```
+
+
 ### RL Dataset
 ```
-cd searchless_chess
-mkdir data
-cd data
+# If you want to collect your own RL dataset by yourself
 wget https://storage.googleapis.com/searchless_chess/data/puzzles.csv
 wget https://database.lichess.org/lichess_db_puzzle.csv.zst
 unzstd lichess_db_puzzle.csv.zst
 
-# Lichess with 5 moves each (Hojoon preprocessed)
-gdown https://drive.google.com/file/d/1_EkHtyVWnOKEPEi9hvuUinLhxJR9-68w/view?usp=sharing
-```
-
-```
-mkdir train
-python extract_lichess_minimal.py --save_path ./train/lichess_200k.csv --data_path ./lichess_db_puzzle.csv --data_size 200000
-
-mkdir test
-python extract_lichess.py --save_path ./test/lichess_10k.csv --data_path ./puzzles.csv --data_size 10000
+python ./searchless_chess/data/extract_lichess.py --save_path ./raw_data --data_path ./lichess_db_puzzle.csv 
 ```
 
 ## Model

@@ -87,9 +87,16 @@ def main_task(config, compute_score=None):
 
     # instantiate reward function
     # - for rule-based rm, we directly call a reward score
-    train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
-    val_reward_fn = LichessRewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    if config.reward_model.train_type == "Base":
+        train_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    elif config.reward_model.train_type == "Lichess":
+        train_reward_fn = LichessRewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
 
+    if config.reward_model.val_type == "Base":
+        val_reward_fn = RewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    elif config.reward_model.val_type == "Lichess":
+        val_reward_fn = LichessRewardManager(tokenizer=tokenizer, num_examine=3, rew_configs=config.reward_model)
+    
     resource_pool_manager = ResourcePoolManager(
         resource_pool_spec={
             global_pool_id: [config.trainer.n_gpus_per_node] * config.trainer.nnodes,

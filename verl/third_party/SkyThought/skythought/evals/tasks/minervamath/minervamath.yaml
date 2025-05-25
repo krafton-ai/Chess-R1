@@ -1,4 +1,4 @@
-handler: math
+handler: minervamath
 dataset_path: "svc-huggingface/minerva-math" # repo ID in huggingface
 dataset_subset: null # which subset on huggingface
 question_key: problem

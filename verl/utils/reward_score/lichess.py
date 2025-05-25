@@ -161,6 +161,53 @@ def validate_chess_move_qvalue(
     
     return use_answer_reward, move_qvalue, logs
 
+def validate_chess_move_strict(
+    fen: str,
+    move: str,
+    answer_move: str,
+    legal_moves: Tuple[str],
+    logs: dict,
+) -> Tuple[float, dict]:
+    """
+    Validates a chess move for a given FEN string and assigns a score based on the validation rules.
+    
+    Args:
+        fen (str): The FEN string representing the board state.
+        move (str): The move in SAN notation to validate.
+        chess_model_qvalues (np.array): Numpy array with qvalues for each possible move
+        legal_moves (List[str]): The legal moves in SAN notation.
+        logs (dict): Dictionary to store logging metrics.
+        
+    Returns:
+        Tuple containing (use_answer_reward, qvalue_reward, logs)
+    """
+    board = chess.Board(fen)
+    use_answer_reward = False
+    move_qvalue = 0
+
+    # strong penalty for
+    # 1. not following san format
+    # 2. following san format but illegal move
+    try:
+        move_uci  = board.parse_san(move).uci()
+    except ValueError:
+        return use_answer_reward, 0.0, logs
+    
+    if move not in legal_moves:
+        return use_answer_reward, 0.0, logs
+    else:
+        logs['legal_move'] = 1
+
+    correct = move == answer_move
+    if correct:
+        use_answer_reward = True
+        logs['optimal'] = 1.0
+    else:
+        use_answer_reward = False
+        logs['optimal'] = 0.0
+
+    return use_answer_reward, move_qvalue, logs
+
 def validate_english_text(text: str, lg_detector: torch.nn.Module, logs: dict, threshold: float = 0.9) -> Tuple[float, dict]:
     """
     Validates that the generated text contains only ASCII characters.
@@ -235,12 +282,20 @@ def compute_score(
 
     try:
         if format_correct and answer_text:
-            use_answer_reward, qvalue_reward, logs = validate_chess_move_qvalue(
-                                    fen=board_fen,
-                                    move=answer_text,
-                                    chess_model_qvalues=chess_model_qvalues,
-                                    legal_moves=legal_moves_san,
-                                    logs=logs)
+            if qvalue_reward_scaler != 0.0:
+                use_answer_reward, qvalue_reward, logs = validate_chess_move_qvalue(
+                                        fen=board_fen,
+                                        move=answer_text,
+                                        chess_model_qvalues=chess_model_qvalues,
+                                        legal_moves=legal_moves_san,
+                                        logs=logs)
+            elif answer_reward != 0.0:
+                use_answer_reward, qvalue_reward, logs = validate_chess_move_strict(
+                        fen=board_fen,
+                        move=answer_text,
+                        answer_move=next_move_san,
+                        legal_moves=legal_moves_san,
+                        logs=logs)
         else:
             use_answer_reward = False
             qvalue_reward = 0.0
@@ -253,5 +308,5 @@ def compute_score(
                     use_english_reward * english_reward + \
                     use_answer_reward * answer_reward + \
                     qvalue_reward_scaler * qvalue_reward
-
+    
     return total_reward, use_answer_reward, logs
