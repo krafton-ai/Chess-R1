@@ -67,19 +67,6 @@ conda activate chess_llm
 bash run_dataset.sh
 ```
 
-### Zero-shot chess evaluation
-```
-# Example scripts
-bash ./scripts/zeroshot_eval/qwen7b_base/eval_all.sh
-```
-### SFT Training
-```
-# Use LLaMA-Factory
-# How to use webui in kubeflow
-cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
-GRADIO_SHARE=1 llamafactory-cli webui
-```
-
 ### RL Training
 
 #### RL Dataset
@@ -105,14 +92,34 @@ unzip 270M.zip
 rm 270M.zip
 ```
 
-
 #### RL Fine-Tuning
 ```
 # w/o RL feedback
 bash ./scripts/grpo_train/Qwen25_7B_Base_reastemp_fen_legal_rule_norlfeedback.sh
+bash ./scripts/grpo_train/Llama31_8B_Base_reastemp_fen_legal_rule_norlfeedback.sh
 # w/ RL feedback
 bash ./scripts/grpo_train/Qwen25_7B_Base_reastemp_fen_legal_rule_rlfeedback.sh
+bash ./scripts/grpo_train/Llama31_8B_Base_reastemp_fen_legal_rule_rlfeedback.sh
+# o3 pre-trained w/ RL feedback
+bash ./scripts/grpo_train/Qwen25_7B_Base_o3_SFT_reastemp_fen_legal_rule_rlfeedback.sh
+bash ./scripts/grpo_train/Llama31_8B_Base_o3_SFT_reastemp_fen_legal_rule_rlfeedback.sh
 ```
+
+### o3 Reasoning SFT Training
+```
+# Use LLaMA-Factory
+cd verl/third_party/SkyThought/skythought/train/LLaMA-Factory
+GRADIO_SHARE=1 llamafactory-cli webui
+# Select `preprocessed_o3_chess_reasoning_dataset.json` as training dataset
+```
+
+### Zero-shot chess evaluation
+```
+# Example scripts
+bash ./scripts/zeroshot_eval/qwen7b_base/eval_all.sh
+```
+
+
 
 ## Tensorboard Logging
 ```

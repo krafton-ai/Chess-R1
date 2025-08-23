@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # Environment variables
-export N_GPUS=4 # number of gpus
-export CUDA_VISIBLE_DEVICES=0,1,2,3 # fix this so that it matches N_GPU
+export N_GPUS=4
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 export ROLLOUT_TP_SIZE=1  # Set tensor parallel
 export VLLM_ATTENTION_BACKEND=XFORMERS  # Use XFORMERS for attention
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
 export DATA_DIR=${DATA_DIR:-"data/lichess_db_puzzle_processed_qwen_instruct_reastemp_fen_legal_rule"}
-export BASE_MODEL=${BASE_MODEL:-"Qwen/Qwen2.5-7B"}
+export BASE_MODEL=${BASE_MODEL:-"meta-llama/Llama-3.1-8B"}
 
 # Experiment metadata
 export USER_NAME=${USER_NAME:-"USER"}
-export GROUP_NAME=${GROUP_NAME:-"Qwen25_7B_Base"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"Nochessdata_yesreastemp_fen_legal_rule_yesRLfeedback"}
+export GROUP_NAME=${GROUP_NAME:-"Llama31_8B_Base"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"Nochessdata_yesreastemp_fen_legal_rule_noRLfeedback"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -88,6 +88,8 @@ algorithm_args=" \
 reward_args=" \
     reward_model.train_type=Base \
     reward_model.val_type=Lichess \
+    reward_model.answer_reward=1.0 \
+    reward_model.qvalue_reward_scaler=0.0 \
 "
 
 TRAIN_ARGS="$trainer_args $data_args $actor_args $rollout_args $reference_args $algorithm_args $reward_args"
