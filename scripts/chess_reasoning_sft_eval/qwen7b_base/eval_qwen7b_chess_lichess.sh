@@ -9,13 +9,13 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
 # export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
-export DATA_DIR=${DATA_DIR:-"data/chess_comparison"}
-export BASE_MODEL=${BASE_MODEL:-"joonleesky/qwen_chess1_3of5"}
+export DATA_DIR=${DATA_DIR:-"data/lichess_db_puzzle_processed_qwen_instruct_reastemp_fen_legal_rule"}
+export BASE_MODEL=${BASE_MODEL:-"godnpeter/qwen_chess_o3_981samples_epoch10"}
 
 # Experiment metadata
 export USER_NAME=${USER_NAME:-"evaluation"}
 export GROUP_NAME=${GROUP_NAME:-"chess_sft_qwen7b_base"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_comparison_test"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_deepmind_lichess_test"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
@@ -83,4 +83,4 @@ ray stop --force && ray start --head --include-dashboard=True
 # Create log directory if it doesn't exist
 mkdir -p ${LOG_DIR}
 
-python -m verl.trainer.eval_chess_sft $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log
+python -m verl.trainer.eval_lichess_accuracy $TRAIN_ARGS 2>&1 | tee ${LOG_DIR}/verl_demo.log

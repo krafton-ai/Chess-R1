@@ -2,6 +2,9 @@
   "identity": {
     "file_name": "identity.json"
   },
+  "preprocessed_o3_chess_reasoning_dataset": {
+    "file_name": "preprocessed_o3_chess_reasoning_dataset.json"
+  },
   "chess_annotation_train": {
     "file_name": "chess_annotation_train.jsonl"
   },

@@ -9,13 +9,13 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 # Define model and dataset
 # export DATA_DIR=${DATA_DIR:-"data/chess_modeling_instruct_debug"}
-export DATA_DIR=${DATA_DIR:-"data/chess_mechanics"}
-export BASE_MODEL=${BASE_MODEL:-"joonleesky/qwen_chess1_3of5"}
+export DATA_DIR=${DATA_DIR:-"data/chess_comparison"}
+export BASE_MODEL=${BASE_MODEL:-"godnpeter/qwen_chess_o3_981samples_epoch10"}
 
 # Experiment metadata
 export USER_NAME=${USER_NAME:-"evaluation"}
 export GROUP_NAME=${GROUP_NAME:-"chess_sft_qwen7b_base"}
-export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_mechanism_test"}
+export EXPERIMENT_NAME=${EXPERIMENT_NAME:-"chess_comparison_test"}
 
 timestamp=$(date +"%m%d-%H:%M")
 DATA_NAME=$(basename "$DATA_DIR")       
