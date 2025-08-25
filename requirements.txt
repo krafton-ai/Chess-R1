@@ -14,7 +14,7 @@ pydantic==2.10.6
 absl-py==2.1.0
 chess==1.11.2
 chex==0.1.89
-dm-haiku==0.0.13
+dm-haiku==0.0.14
 grain-nightly==0.0.10
 jax==0.5.2
 jax-cuda12-pjrt==0.5.3
