@@ -13,7 +13,7 @@ hf_transfer==0.1.9
 pydantic==2.10.6
 absl-py==2.1.0
 chess==1.11.2
-chex==0.1.89
+chex==0.1.90
 dm-haiku==0.0.13
 grain-nightly==0.0.10
 jax==0.5.2
