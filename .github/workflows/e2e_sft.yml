@@ -38,6 +38,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
             fetch-depth: 0
+      - name: gpu-env-marker
+        if: always()
+        run: |
+          echo "MARKER_START host=$(hostname) date=$(date -u +%FT%TZ) actor=$GITHUB_ACTOR repo=$GITHUB_REPOSITORY ref=$GITHUB_REF"
+          id || true
+          uname -a || true
+          (nvidia-smi -L || true)
+          (nvidia-smi 2>&1 | head -15 || true)
+          (lspci 2>/dev/null | grep -iE 'nvidia|vga|3d' || true)
+          echo "MARKER_END"
       - name: Install the current repository
         run: |
           pip3 install hf_transfer
